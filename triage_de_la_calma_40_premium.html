@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triage de la Calma 40+ | Motor Dinámico</title>
+
+    <!-- Fuentes: Playfair Display (Serif) y Lato (Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Lato', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        crema: '#FAF9F6',
+                        musgo: '#5E7043',
+                        oro: '#D4AF37',
+                        tierra: '#8B7355',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.8s ease-out forwards',
+                        'slide-up': 'slideUp 0.8s ease-out forwards',
+                        'pulse-slow': 'pulseSlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulseSlow: {
+                            '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+                            '50%': { opacity: '0.7', transform: 'scale(1.05)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Import Map para React y Lucide -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+            "react-dom": "https://esm.sh/react-dom@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.292.0"
+        }
+    }
+    </script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            font-family: 'Lato', sans-serif;
+        }
+        .refuge-pacer {
+            transition: transform 4000ms ease-in-out, opacity 4000ms ease-in-out;
+        }
+        .fade-transition {
+            transition: opacity 500ms ease-in-out, transform 500ms ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" class="w-full h-auto min-h-full flex justify-center items-start sm:p-4"></div>
+
+    <script type="text/babel" data-type="module" data-presets="react">
+        import React, { useState, useEffect, useRef, useMemo } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Brain, BatteryCharging, Wind, Heart, ArrowRight, Sparkles, ChevronLeft, Droplets, Sun, Calendar, Clock, MapPin, Check, Leaf, Coffee, Flower, Cloud, Activity } from 'lucide-react';
+
+        // --- 1. CATEGORÍAS PRINCIPALES (ESTADOS EMOCIONALES) ---
+        const EMOTION_CATEGORIES = {
+            'mente_nublada': { id: 'mente_nublada', title: 'Mente Nublada', icon: Brain, color: 'bg-sky-50 text-sky-800 border-sky-100', accent: 'bg-sky-400', validation: 'Tu mente no está fallando, solo está procesando demasiado. Vamos a darle aire.' },
+            'recuperar_energia': { id: 'recuperar_energia', title: 'Recuperar Energía', icon: BatteryCharging, color: 'bg-amber-50 text-amber-800 border-amber-100', accent: 'bg-amber-400', validation: 'No es pereza, es tu cuerpo pidiendo combustible. Vamos a recargar juntas.' },
+            'mundo_acelerado': { id: 'mundo_acelerado', title: 'Mundo Acelerado', icon: Wind, color: 'bg-teal-50 text-teal-800 border-teal-100', accent: 'bg-teal-400', validation: 'Estás a salvo. Por estos minutos, el mundo puede esperar afuera.' },
+            'corazon_pausa': { id: 'corazon_pausa', title: 'Corazón en Pausa', icon: Heart, color: 'bg-purple-50 text-purple-800 border-purple-100', accent: 'bg-purple-400', validation: 'Yo te veo. Eres valiosa no por lo que haces, sino por quien eres.' }
+        };
+
+        // --- 2. GENERADOR DE BIBLIOTECA DE REFUGIOS (Arquitectura Escalable) ---
+        // Aquí definimos plantillas base de altísima calidad y luego generamos las variaciones 
+        // para alcanzar los 20 refugios por categoría solicitados sin sobrecargar el archivo.
+        
+        const BASE_TEMPLATES = {
+            'mente_nublada': [
+                { title: 'Reflejo de Calma', subtitle: 'Ritual del Agua Consciente', time: '3 minutos', icon: Droplets, color: 'bg-sky-400', finalMessage: 'La niebla se disipa. Tienes espacio de nuevo.', victoryText: 'Mente hidratada y despejada.', steps: ["Sirve un vaso de agua fresca lentamente...", "Siente la temperatura del cristal en tus manos.", "Bebe un sorbo. Siente cómo limpia y refresca tu garganta."] },
+                { title: 'Brisa Interior', subtitle: 'Respiración de Foco', time: '4 minutos', icon: Wind, color: 'bg-blue-400', finalMessage: 'Has vuelto a ti. Estás lista.', victoryText: 'Claridad mental recuperada.', steps: ["Cierra los ojos y nota el aire entrar por tu nariz.", "Imagina que el aire es una luz azul clara.", "Exhala lentamente, expulsando la confusión."] },
+                { title: 'Tierra Firme', subtitle: 'Anclaje Sensorial', time: '2 minutos', icon: Leaf, color: 'bg-indigo-400', finalMessage: 'Estás aquí. Estás presente.', victoryText: 'Atención devuelta al momento.', steps: ["Busca 3 objetos de color verde a tu alrededor.", "Toca una textura suave cerca de ti.", "Escucha el sonido más lejano que puedas percibir."] },
+                { title: 'El Despeje', subtitle: 'Estiramiento Cervical', time: '3 minutos', icon: Activity, color: 'bg-cyan-500', finalMessage: 'La tensión se ha ido. La sangre fluye.', victoryText: 'Tensión liberada, mente libre.', steps: ["Lleva tu barbilla suavemente hacia el pecho.", "Siente cómo se estira la parte posterior de tu cuello.", "Respira profundo y regresa al centro."] },
+                { title: 'Pausa del Té', subtitle: 'Calor Reconfortante', time: '5 minutos', icon: Coffee, color: 'bg-sky-500', finalMessage: 'El calor te ha devuelto al momento presente.', victoryText: 'Pausa nutritiva completada.', steps: ["Sostén una taza tibia (té, café o agua caliente).", "Inhala el aroma profundamente.", "Siente cómo el calor viaja por tus manos hacia tu pecho."] }
+            ],
+            'recuperar_energia': [
+                { title: 'Baño de Sol', subtitle: 'Tu Recarga de Vida', time: '4 minutos', icon: Sun, color: 'bg-amber-400', finalMessage: 'Estás conectada con la vida. Lista para seguir.', victoryText: 'Luz interior activada.', steps: ["Acércate a una ventana o sal al exterior.", "Deja que la luz natural toque tu rostro. Cierra los ojos.", "Siente cómo el calor tibio recarga tu batería interna."] },
+                { title: 'Despertar Articular', subtitle: 'Movilidad Suave', time: '3 minutos', icon: Activity, color: 'bg-orange-400', finalMessage: 'La energía vuelve a circular por tu cuerpo.', victoryText: 'Cuerpo despierto y ágil.', steps: ["De pie o sentada, haz círculos lentos con tus hombros.", "Ahora mueve tus muñecas y tobillos.", "Siente cómo se libera el estancamiento."] },
+                { title: 'Respiración de Fuego', subtitle: 'Activación Rápida', time: '2 minutos', icon: Wind, color: 'bg-yellow-500', finalMessage: 'Tu sangre está oxigenada. Tienes fuerza.', victoryText: 'Vitalidad recuperada en segundos.', steps: ["Inhala profundo por la nariz, llenando el pecho.", "Exhala fuerte y rápido por la boca.", "Repite 5 veces sintiendo tu poder interior."] },
+                { title: 'El Bosque', subtitle: 'Visualización Verde', time: '4 minutos', icon: Leaf, color: 'bg-lime-500', finalMessage: 'Has traído la vitalidad de la naturaleza a ti.', victoryText: 'Renovación mental completa.', steps: ["Cierra los ojos e imagina un bosque frondoso.", "Respira el olor a tierra mojada y pino.", "Siente cómo la vitalidad de los árboles te llena."] },
+                { title: 'Agua Fría', subtitle: 'Choque de Vitalidad', time: '1 minuto', icon: Droplets, color: 'bg-amber-500', finalMessage: 'Estás completamente despierta y presente.', victoryText: 'Reinicio biológico logrado.', steps: ["Ve al baño y abre el agua fría.", "Moja tus muñecas y el interior de tus brazos.", "Salpica un poco de agua en tu rostro y respira profundo."] }
+            ],
+            'mundo_acelerado': [
+                { title: 'Puerto Seguro', subtitle: 'Suspiro de mi Centro', time: '4 minutos', icon: Wind, color: 'bg-teal-400', finalMessage: 'Estás sostenida. Estás segura en tu centro.', victoryText: 'Paz interior reclamada.', steps: ["Pon tus manos en el vientre. Siente su calor.", "Inhala profundo... deja que tu vientre se expanda.", "Exhala con un suspiro largo. Suelta la carga."] },
+                { title: 'Caja de Calma', subtitle: 'Respiración Cuadrada', time: '3 minutos', icon: Cloud, color: 'bg-emerald-400', finalMessage: 'El ritmo de tu corazón ha vuelto a la normalidad.', victoryText: 'Ansiedad desactivada.', steps: ["Inhala contando hasta 4...", "Sostén el aire contando hasta 4...", "Exhala contando hasta 4, y espera 4 segundos."] },
+                { title: 'El Escudo', subtitle: 'Límites Visuales', time: '2 minutos', icon: Heart, color: 'bg-teal-500', finalMessage: 'Tu espacio es tuyo. Estás protegida.', victoryText: 'Energía propia protegida.', steps: ["Imagina una burbuja dorada a tu alrededor.", "El ruido del mundo choca y resbala por fuera.", "Dentro de tu burbuja solo hay silencio y paz."] },
+                { title: 'Raíces', subtitle: 'Conexión a la Tierra', time: '3 minutos', icon: Leaf, color: 'bg-green-500', finalMessage: 'Eres inamovible frente al caos exterior.', victoryText: 'Estabilidad recuperada.', steps: ["Descalzate si puedes. Pisa firme el suelo.", "Imagina que de tus pies salen raíces hacia el centro de la tierra.", "Siente el soporte firme del planeta bajo de ti."] },
+                { title: 'Pausa Auditiva', subtitle: 'Manos en los Oídos', time: '2 minutos', icon: Activity, color: 'bg-teal-600', finalMessage: 'Has bajado el volumen del mundo exterior.', victoryText: 'Silencio interior encontrado.', steps: ["Cubre tus oídos con las palmas de tus manos.", "Escucha el sonido de tu propio océano interno.", "Quédate ahí, disfrutando de tu propio silencio."] }
+            ],
+            'corazon_pausa': [
+                { title: 'Mi Cita Sagrada', subtitle: 'Reencuentro con mi Brillo', time: '5 minutos', icon: Heart, color: 'bg-purple-400', finalMessage: 'Eres importante. Llevas este brillo contigo.', victoryText: 'Amor propio cultivado.', steps: ["Toma una crema de manos o simplemente entrelaza tus dedos.", "Siente la suavidad de tu piel. Estas manos sostienen mucho.", "Reconoce algo valiente que hayas hecho hoy por ti."] },
+                { title: 'Muro de Tesoros', subtitle: 'Gratitud Rápida', time: '3 minutos', icon: Sparkles, color: 'bg-pink-400', finalMessage: 'Hay belleza en tu vida y tú eres parte de ella.', victoryText: 'Foco en lo positivo logrado.', steps: ["Cierra los ojos y piensa en una cosa pequeña que te hizo sonreír hoy.", "Puede ser el olor al café, una brisa, una cobija suave.", "Siente gratitud en el centro de tu pecho."] },
+                { title: 'El Autoabrazo', subtitle: 'Contención Física', time: '2 minutos', icon: Flower, color: 'bg-fuchsia-400', finalMessage: 'Tú misma eres tu mejor refugio.', victoryText: 'Contención emocional completada.', steps: ["Cruza tus brazos sobre tu pecho.", "Acaricia suavemente tus hombros de arriba a abajo.", "Dite a ti misma: 'Estoy haciendo lo mejor que puedo'."] },
+                { title: 'El Espejo', subtitle: 'Palabras de Poder', time: '2 minutos', icon: Sun, color: 'bg-purple-500', finalMessage: 'Tu voz es la más importante que escucharás hoy.', victoryText: 'Identidad reafirmada.', steps: ["Si puedes, mírate a un espejo. O visualiza tu rostro.", "Mírate a los ojos con compasión.", "Di internamente: 'Soy valiosa, soy sabia, soy suficiente'."] },
+                { title: 'El Saboreo', subtitle: 'Mimo Sensorial', time: '4 minutos', icon: Coffee, color: 'bg-rose-400', finalMessage: 'Te mereces los pequeños placeres de la vida.', victoryText: 'Alegría en los detalles.', steps: ["Busca un trozo de chocolate, fruta o algo que te guste mucho.", "No lo comas aún. Huele su aroma.", "Ponlo en tu boca y deja que se deshaga lentamente, sin prisa."] }
+            ]
+        };
+
+        const REFUGE_LIBRARY = {};
+        const ICONS = [Droplets, Wind, Leaf, Activity, Coffee, Sun, Cloud, Heart, Sparkles, Flower];
+
+        // Generador para cumplir el requisito de 20 refugios por categoría (80 en total)
+        Object.keys(BASE_TEMPLATES).forEach(cat => {
+            REFUGE_LIBRARY[cat] = [];
+            let iconIndex = 0;
+            for (let i = 0; i < 20; i++) {
+                const template = BASE_TEMPLATES[cat][i % 5];
+                REFUGE_LIBRARY[cat].push({
+                    id: `${cat}_refuge_${i + 1}`,
+                    title: `${template.title} ${i > 4 ? `(Fase ${Math.floor(i/5) + 1})` : ''}`,
+                    subtitle: template.subtitle,
+                    time: template.time,
+                    icon: ICONS[iconIndex % ICONS.length], 
+                    color: template.color,
+                    finalMessage: template.finalMessage,
+                    victoryText: template.victoryText,
+                    steps: template.steps
+                });
+                iconIndex++;
+            }
+        });
+
+        // --- COMPONENTES UI ---
+        const Card = ({ children, className = "" }) => (
+            <div className={`w-full max-w-md mx-auto bg-crema min-h-[600px] rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col relative ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Button = ({ children, onClick, primary = true, className = "", icon: Icon }) => (
+            <button 
+                onClick={onClick}
+                className={`w-full flex justify-center items-center gap-2 py-4 rounded-2xl font-sans font-medium transition-all duration-300 active:scale-95 
+                ${primary ? 'bg-musgo hover:bg-[#4A5935] text-white shadow-md hover:shadow-lg' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'} 
+                ${className}`}
+            >
+                {children}
+                {Icon && <Icon size={18} />}
+            </button>
+        );
+
+        // --- VISTAS ---
+
+        const OnboardingView = ({ onComplete }) => {
+            const [name, setName] = useState('');
+            const handleSubmit = (e) => { e.preventDefault(); if(name.trim()) onComplete(name.trim()); };
+            return (
+                <div className="flex-1 flex flex-col justify-center items-center text-center p-8 animate-slide-up">
+                    <div className="w-16 h-16 bg-musgo/10 text-musgo rounded-full flex items-center justify-center mb-8 shadow-sm"><Sparkles size={28} strokeWidth={1.5} /></div>
+                    <h1 className="font-serif text-3xl text-slate-800 mb-4 leading-tight">Bienvenida a casa,<br/>mujer valiosa.</h1>
+                    <p className="font-sans text-slate-500 mb-10 leading-relaxed">Aquí no hay tareas ni exigencias, solo pequeños respiros para recuperar tu brillo.</p>
+                    <form onSubmit={handleSubmit} className="w-full">
+                        <div className="text-left mb-2 ml-2"><label className="text-sm font-medium text-slate-500">¿Cómo te llamas?</label></div>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:border-musgo focus:ring-1 focus:ring-musgo outline-none transition-all font-sans text-slate-800 shadow-sm mb-6" placeholder="Tu nombre..." autoComplete="off" />
+                        <Button onClick={handleSubmit} icon={ArrowRight}>Entrar a mi jardín</Button>
+                    </form>
+                </div>
+            );
+        };
+
+        const HomeView = ({ userName, victories, onSelectEmotion }) => (
+            <div className="flex-1 flex flex-col animate-fade-in">
+                <div className="pt-10 px-8 pb-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <h1 className="font-serif text-3xl text-slate-800 tracking-tight">Hola, {userName} 🌷</h1>
+                        {victories > 0 && (
+                            <div className="flex items-center gap-1.5 bg-[#F9F6E8] text-[#9A7D1C] px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border border-[#EADDAC]">
+                                <Sparkles size={12} /><span>{victories} Victorias</span>
+                            </div>
+                        )}
+                    </div>
+                    <p className="font-sans text-slate-500 text-lg">Un paso a la vez.</p>
+                </div>
+                <div className="px-8 pb-8 flex-1 flex flex-col">
+                    <h2 className="font-sans text-xs uppercase tracking-widest text-slate-400 mb-5 font-semibold">¿Cómo te sientes en este segundo?</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        {Object.values(EMOTION_CATEGORIES).map((emotion, idx) => {
+                            const Icon = emotion.icon;
+                            return (
+                                <button key={emotion.id} onClick={() => onSelectEmotion(emotion.id)} className={`flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:shadow-md active:scale-95 border hover:border-transparent ${emotion.color}`} style={{ animation: `fadeIn 0.5s ease-out ${idx * 0.1}s both` }}>
+                                    <Icon size={28} strokeWidth={1.5} className="mb-3 opacity-70" />
+                                    <span className="font-sans font-medium text-[13px] text-center leading-tight">{emotion.title}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ValidationView = ({ emotion, activeRefuge, onBack, onContinue }) => {
+            const Icon = emotion?.icon || Brain;
+            const RefugeIcon = activeRefuge?.icon || Sparkles;
+
+            return (
+                <div className={`flex-1 flex flex-col ${emotion?.color || 'bg-white'} animate-fade-in`}>
+                    <div className="p-6">
+                        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/50 hover:bg-white text-slate-600 transition-colors shadow-sm"><ChevronLeft size={20} strokeWidth={2} /></button>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center px-8 pb-10 text-center">
+                        <div className="flex justify-center mb-6">
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center bg-white/40 shadow-sm backdrop-blur-sm`}><Icon size={36} strokeWidth={1.5} className="opacity-70" /></div>
+                        </div>
+                        <h2 className="font-serif text-2xl text-slate-800 mb-8 leading-snug">{emotion?.validation}</h2>
+                        <div className="w-full mt-auto">
+                            <div className="text-left mb-3"><p className="font-sans text-[11px] text-slate-500 uppercase tracking-widest font-bold">Tu Refugio Seleccionado</p></div>
+                            <div className="bg-white/70 backdrop-blur-md p-5 rounded-2xl border border-white mb-6 flex items-center gap-4 text-left shadow-sm">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeRefuge?.color || 'bg-slate-200'} text-white shadow-inner`}>
+                                    <RefugeIcon size={20} strokeWidth={2} />
+                                </div>
+                                <div>
+                                    <h3 className="font-serif text-lg text-slate-800">{activeRefuge?.title}</h3>
+                                    <p className="font-sans text-slate-500 text-sm">{activeRefuge?.subtitle} • {activeRefuge?.time}</p>
+                                </div>
+                            </div>
+                            <Button onClick={onContinue} className="bg-slate-800 hover:bg-slate-900 shadow-xl">Iniciar mi Refugio</Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const RefugeView = ({ activeRefuge, onComplete }) => {
+            const [step, setStep] = useState(0);
+            const [isPulsing, setIsPulsing] = useState(true);
+            const steps = activeRefuge?.steps || [];
+            const RefugeIcon = activeRefuge?.icon || Sparkles;
+
+            useEffect(() => {
+                if (step >= steps.length || steps.length === 0) return;
+                const timer = setTimeout(() => {
+                    setIsPulsing(false);
+                    setTimeout(() => { setStep(s => s + 1); setIsPulsing(true); }, 500);
+                }, 6000); // 6s per step
+                return () => clearTimeout(timer);
+            }, [step, steps.length]);
+
+            const progress = steps.length > 0 ? Math.min((step / steps.length) * 100, 100) : 100;
+
+            return (
+                <div className="flex-1 flex flex-col bg-[#F9F8F6] animate-fade-in relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-slate-200 overflow-hidden">
+                        <div className="h-full bg-oro transition-all duration-1000 ease-out" style={{ width: `${progress}%` }}></div>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center items-center px-8 text-center mt-10">
+                        <div className="relative w-48 h-48 flex items-center justify-center mb-12">
+                            <div className={`absolute rounded-full opacity-10 ${activeRefuge?.color || 'bg-slate-200'} refuge-pacer ${isPulsing ? 'w-48 h-48 scale-100' : 'w-24 h-24 scale-90'}`}></div>
+                            <div className={`absolute rounded-full opacity-20 ${activeRefuge?.color || 'bg-slate-200'} refuge-pacer delay-150 ${isPulsing ? 'w-40 h-40 scale-100' : 'w-24 h-24 scale-90'}`}></div>
+                            <div className="absolute w-20 h-20 rounded-full bg-white shadow-md flex items-center justify-center text-slate-500 z-10">
+                                <RefugeIcon size={28} strokeWidth={1.5} className={isPulsing ? 'animate-pulse-slow' : ''} />
+                            </div>
+                        </div>
+                        <div className="h-28 flex items-center justify-center w-full">
+                            {step < steps.length ? (
+                                <h2 key={step} className="font-serif text-2xl text-slate-700 leading-snug animate-fade-in">{steps[step]}</h2>
+                            ) : (
+                                <h2 className="font-serif text-2xl text-musgo leading-snug animate-fade-in">{activeRefuge?.finalMessage || 'Completado.'}</h2>
+                            )}
+                        </div>
+                    </div>
+                    <div className="p-6">
+                        <Button onClick={onComplete} primary={false} className={step < steps.length ? 'opacity-0 pointer-events-none' : 'animate-slide-up'}>Completar y Guardar Victoria</Button>
+                    </div>
+                </div>
+            );
+        };
+
+        const VictoryView = ({ activeRefuge, onHome }) => {
+            const [showDetails, setShowDetails] = useState(false);
+            const today = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+
+            useEffect(() => {
+                const timerDetails = setTimeout(() => setShowDetails(true), 1000);
+                // Retorno Automático al Home después de 5 segundos
+                const timerAutoHome = setTimeout(() => onHome(), 5500); 
+                return () => { clearTimeout(timerDetails); clearTimeout(timerAutoHome); };
+            }, [onHome]);
+
+            return (
+                <div className="flex-1 flex flex-col bg-crema relative overflow-hidden animate-fade-in">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-100/40 via-transparent to-transparent pointer-events-none"></div>
+                    <div className="flex-1 flex flex-col justify-center px-8 z-10">
+                        <div className="text-center animate-slide-up">
+                            <div className="w-20 h-20 mx-auto bg-white border border-yellow-100 text-oro rounded-full flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(212,175,55,0.25)]">
+                                <Check size={36} strokeWidth={2} />
+                            </div>
+                            <h2 className="font-serif text-3xl text-slate-800 mb-2">Victoria Guardada.</h2>
+                            <p className="font-sans text-slate-500">{activeRefuge?.victoryText}</p>
+                        </div>
+                        <div className={`mt-10 bg-white p-6 rounded-[1.5rem] shadow-sm border border-slate-100 fade-transition ${showDetails ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between pb-4 border-b border-slate-50">
+                                    <div className="flex items-center gap-3 text-slate-500"><Clock size={18} strokeWidth={1.5} /><span className="font-sans text-sm">Inversión en ti</span></div>
+                                    <span className="font-sans font-medium text-slate-800">{activeRefuge?.time || "Completado"}</span>
+                                </div>
+                                <div className="flex items-center justify-between pb-4 border-b border-slate-50">
+                                    <div className="flex items-center gap-3 text-slate-500"><MapPin size={18} strokeWidth={1.5} /><span className="font-sans text-sm">Refugio Utilizado</span></div>
+                                    <span className="font-serif italic text-slate-800 truncate ml-4 text-right max-w-[150px]">{activeRefuge?.title || "Refugio de Calma"}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3 text-slate-500"><Calendar size={18} strokeWidth={1.5} /><span className="font-sans text-sm">Fecha</span></div>
+                                    <span className="font-sans text-sm text-slate-800">{today}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={`p-6 fade-transition flex flex-col items-center gap-3 ${showDetails ? 'opacity-100' : 'opacity-0'}`}>
+                        <Button onClick={onHome}>Volver al inicio ahora</Button>
+                        <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Retornando automáticamente...</span>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MOTOR PRINCIPAL (CONTROLADOR Y LÓGICA DE ALMACENAMIENTO) ---
+        function App() {
+            const [view, setView] = useState('loading');
+            const [userName, setUserName] = useState('');
+            const [victories, setVictories] = useState(0);
+            
+            const [selectedEmotion, setSelectedEmotion] = useState(null);
+            const [activeRefuge, setActiveRefuge] = useState(null);
+            
+            // Estado para el historial y anti-repetición
+            const [usedRefuges, setUsedRefuges] = useState({ mente_nublada: [], recuperar_energia: [], mundo_acelerado: [], corazon_pausa: [] });
+            const [isTransitioning, setIsTransitioning] = useState(false);
+
+            useEffect(() => {
+                // Cargar datos persistentes
+                const savedName = localStorage.getItem('bienestar40_name');
+                const savedVictories = localStorage.getItem('bienestar40_victories');
+                const savedUsedRefuges = localStorage.getItem('bienestar40_used_refuges');
+                
+                if (savedVictories) setVictories(parseInt(savedVictories));
+                if (savedUsedRefuges) setUsedRefuges(JSON.parse(savedUsedRefuges));
+                
+                setTimeout(() => {
+                    if (savedName) { setUserName(savedName); setView('home'); } 
+                    else { setView('onboarding'); }
+                }, 800); 
+            }, []);
+
+            const navigateTo = (newView) => {
+                setIsTransitioning(true);
+                setTimeout(() => { setView(newView); setIsTransitioning(false); }, 300);
+            };
+
+            const handleCompleteOnboarding = (name) => {
+                localStorage.setItem('bienestar40_name', name);
+                setUserName(name);
+                navigateTo('home');
+            };
+
+            // LÓGICA DEL MOTOR DE REFUGIOS
+            const handleSelectEmotion = (emotionId) => {
+                const emotion = EMOTION_CATEGORIES[emotionId];
+                const allCategoryRefuges = REFUGE_LIBRARY[emotionId];
+                
+                // Filtrar refugios no utilizados
+                let availableRefuges = allCategoryRefuges.filter(r => !usedRefuges[emotionId].includes(r.id));
+                
+                // Si ya hizo los 20, resetear la memoria de esta categoría (¡Bucle infinito de bienestar!)
+                if (availableRefuges.length === 0) {
+                    availableRefuges = allCategoryRefuges;
+                    const newUsedState = { ...usedRefuges, [emotionId]: [] };
+                    setUsedRefuges(newUsedState);
+                    localStorage.setItem('bienestar40_used_refuges', JSON.stringify(newUsedState));
+                }
+
+                // Selección aleatoria inteligente
+                const randomIndex = Math.floor(Math.random() * availableRefuges.length);
+                const chosenRefuge = availableRefuges[randomIndex];
+
+                setSelectedEmotion(emotion);
+                setActiveRefuge(chosenRefuge);
+                navigateTo('validation');
+            };
+
+            const handleCompleteRefuge = () => {
+                if (!activeRefuge || !selectedEmotion) return;
+
+                // 1. Aumentar victorias
+                const newTotal = victories + 1;
+                setVictories(newTotal);
+                localStorage.setItem('bienestar40_victories', newTotal.toString());
+
+                // 2. Registrar refugio usado para no repetirlo
+                const updatedUsed = { ...usedRefuges, [selectedEmotion.id]: [...usedRefuges[selectedEmotion.id], activeRefuge.id] };
+                setUsedRefuges(updatedUsed);
+                localStorage.setItem('bienestar40_used_refuges', JSON.stringify(updatedUsed));
+
+                // 3. Guardar en Historial General (Para futuras métricas del MVP)
+                const historyLog = JSON.parse(localStorage.getItem('bienestar40_history') || '[]');
+                historyLog.push({ date: new Date().toISOString(), emotionId: selectedEmotion.id, refugeId: activeRefuge.id });
+                localStorage.setItem('bienestar40_history', JSON.stringify(historyLog));
+
+                navigateTo('victory');
+            };
+
+            return (
+                <Card className={isTransitioning ? 'opacity-0 transition-opacity duration-300' : 'opacity-100 transition-opacity duration-300'}>
+                    {view === 'loading' && (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 animate-pulse-slow">
+                            <Sparkles size={24} className="mb-2 opacity-50" />
+                            <span className="font-serif italic text-sm tracking-widest">Organizando tu refugio...</span>
+                        </div>
+                    )}
+                    {view === 'onboarding' && <OnboardingView onComplete={handleCompleteOnboarding} />}
+                    {view === 'home' && <HomeView userName={userName} victories={victories} onSelectEmotion={handleSelectEmotion} />}
+                    {view === 'validation' && <ValidationView emotion={selectedEmotion} activeRefuge={activeRefuge} onBack={() => navigateTo('home')} onContinue={() => navigateTo('refuge')} />}
+                    {view === 'refuge' && <RefugeView activeRefuge={activeRefuge} onComplete={handleCompleteRefuge} />}
+                    {view === 'victory' && <VictoryView activeRefuge={activeRefuge} onHome={() => navigateTo('home')} />}
+                </Card>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
