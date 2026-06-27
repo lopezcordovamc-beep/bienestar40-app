@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Triage de la Calma 40+ | Motor Dinámico</title>
+    <title>Bienestar 40+ | Tu Refugio Diario</title>
 
     <!-- Fuentes: Playfair Display (Serif) y Lato (Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,8 +28,9 @@
                     },
                     animation: {
                         'fade-in': 'fadeIn 0.8s ease-out forwards',
+                        'fade-in-slow': 'fadeIn 1.5s ease-out forwards',
                         'slide-up': 'slideUp 0.8s ease-out forwards',
-                        'pulse-slow': 'pulseSlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'pulse-slow': 'pulseSlow 5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     },
                     keyframes: {
                         fadeIn: {
@@ -74,10 +75,20 @@
             font-family: 'Lato', sans-serif;
         }
         .refuge-pacer {
-            transition: transform 4000ms ease-in-out, opacity 4000ms ease-in-out;
+            transition: transform 5000ms ease-in-out, opacity 5000ms ease-in-out;
         }
         .fade-transition {
-            transition: opacity 500ms ease-in-out, transform 500ms ease-out;
+            transition: opacity 800ms ease-in-out, transform 800ms ease-out;
+        }
+        .step-transition {
+            transition: opacity 1200ms ease-in-out;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
     </style>
 </head>
@@ -87,76 +98,489 @@
     <script type="text/babel" data-type="module" data-presets="react">
         import React, { useState, useEffect, useRef, useMemo } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Brain, BatteryCharging, Wind, Heart, ArrowRight, Sparkles, ChevronLeft, Droplets, Sun, Calendar, Clock, MapPin, Check, Leaf, Coffee, Flower, Cloud, Activity } from 'lucide-react';
+        import { Brain, BatteryCharging, Wind, Heart, ArrowRight, Sparkles, ChevronLeft, Droplets, Sun, Calendar, Clock, MapPin, Check, Leaf, Coffee, Flower, Cloud, Activity, User, X, Gift, Moon, Utensils, Apple } from 'lucide-react';
 
-        // --- 1. CATEGORÍAS PRINCIPALES (ESTADOS EMOCIONALES) ---
-        const EMOTION_CATEGORIES = {
-            'mente_nublada': { id: 'mente_nublada', title: 'Mente Nublada', icon: Brain, color: 'bg-sky-50 text-sky-800 border-sky-100', accent: 'bg-sky-400', validation: 'Tu mente no está fallando, solo está procesando demasiado. Vamos a darle aire.' },
-            'recuperar_energia': { id: 'recuperar_energia', title: 'Recuperar Energía', icon: BatteryCharging, color: 'bg-amber-50 text-amber-800 border-amber-100', accent: 'bg-amber-400', validation: 'No es pereza, es tu cuerpo pidiendo combustible. Vamos a recargar juntas.' },
-            'mundo_acelerado': { id: 'mundo_acelerado', title: 'Mundo Acelerado', icon: Wind, color: 'bg-teal-50 text-teal-800 border-teal-100', accent: 'bg-teal-400', validation: 'Estás a salvo. Por estos minutos, el mundo puede esperar afuera.' },
-            'corazon_pausa': { id: 'corazon_pausa', title: 'Corazón en Pausa', icon: Heart, color: 'bg-purple-50 text-purple-800 border-purple-100', accent: 'bg-purple-400', validation: 'Yo te veo. Eres valiosa no por lo que haces, sino por quien eres.' }
+        // ==========================================
+        // 0. MOTOR INTERNO DE CONTENIDO ("Bolsa Sin Repetición")
+        // ==========================================
+        const ContentEngine = {
+            getQueues: () => {
+                try { return JSON.parse(localStorage.getItem('b40_content_queues')) || {}; }
+                catch { return {}; }
+            },
+            saveQueues: (q) => localStorage.setItem('b40_content_queues', JSON.stringify(q)),
+            getNext: (key, length) => {
+                let q = ContentEngine.getQueues();
+                let current = q[key];
+                
+                if (!current || current.length === 0) {
+                    current = Array.from({length}, (_, i) => i);
+                    for (let i = current.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [current[i], current[j]] = [current[j], current[i]];
+                    }
+                }
+                
+                const index = current.shift(); 
+                q[key] = current;
+                ContentEngine.saveQueues(q);
+                return index;
+            },
+            resetAll: () => {
+                localStorage.removeItem('b40_content_queues');
+            }
         };
 
-        // --- 2. GENERADOR DE BIBLIOTECA DE REFUGIOS (Arquitectura Escalable) ---
-        // Aquí definimos plantillas base de altísima calidad y luego generamos las variaciones 
-        // para alcanzar los 20 refugios por categoría solicitados sin sobrecargar el archivo.
-        
-        const BASE_TEMPLATES = {
-            'mente_nublada': [
-                { title: 'Reflejo de Calma', subtitle: 'Ritual del Agua Consciente', time: '3 minutos', icon: Droplets, color: 'bg-sky-400', finalMessage: 'La niebla se disipa. Tienes espacio de nuevo.', victoryText: 'Mente hidratada y despejada.', steps: ["Sirve un vaso de agua fresca lentamente...", "Siente la temperatura del cristal en tus manos.", "Bebe un sorbo. Siente cómo limpia y refresca tu garganta."] },
-                { title: 'Brisa Interior', subtitle: 'Respiración de Foco', time: '4 minutos', icon: Wind, color: 'bg-blue-400', finalMessage: 'Has vuelto a ti. Estás lista.', victoryText: 'Claridad mental recuperada.', steps: ["Cierra los ojos y nota el aire entrar por tu nariz.", "Imagina que el aire es una luz azul clara.", "Exhala lentamente, expulsando la confusión."] },
-                { title: 'Tierra Firme', subtitle: 'Anclaje Sensorial', time: '2 minutos', icon: Leaf, color: 'bg-indigo-400', finalMessage: 'Estás aquí. Estás presente.', victoryText: 'Atención devuelta al momento.', steps: ["Busca 3 objetos de color verde a tu alrededor.", "Toca una textura suave cerca de ti.", "Escucha el sonido más lejano que puedas percibir."] },
-                { title: 'El Despeje', subtitle: 'Estiramiento Cervical', time: '3 minutos', icon: Activity, color: 'bg-cyan-500', finalMessage: 'La tensión se ha ido. La sangre fluye.', victoryText: 'Tensión liberada, mente libre.', steps: ["Lleva tu barbilla suavemente hacia el pecho.", "Siente cómo se estira la parte posterior de tu cuello.", "Respira profundo y regresa al centro."] },
-                { title: 'Pausa del Té', subtitle: 'Calor Reconfortante', time: '5 minutos', icon: Coffee, color: 'bg-sky-500', finalMessage: 'El calor te ha devuelto al momento presente.', victoryText: 'Pausa nutritiva completada.', steps: ["Sostén una taza tibia (té, café o agua caliente).", "Inhala el aroma profundamente.", "Siente cómo el calor viaja por tus manos hacia tu pecho."] }
+        // ==========================================
+        // 1. BIBLIOTECAS DE CONTENIDO EMOCIONAL (Depurado)
+        // ==========================================
+        const PREPARATION_MESSAGES = [
+            "Encuentra una postura suave. Deja caer un momento los hombros. Absolutamente nadie te necesita en estos próximos minutos.",
+            "Deja las cargas en el suelo un momento. Este espacio es solo para ti.",
+            "Antes de dar el primer paso... respira hondo. El mundo allá afuera puede esperar un poco más.",
+            "Suelta la tensión de tu mandíbula. Estás a salvo aquí.",
+            "No tienes que resolver nada en este instante. Solo permítete descansar.",
+            "Cierra los ojos un segundo. Reconoce el esfuerzo que has hecho hoy. Ahora, toma un respiro.",
+            "Pausa. Tu cuerpo te ha estado pidiendo este momento. Vamos a escucharlo.",
+            "Nadie espera nada de ti en este refugio. Eres libre de soltar las expectativas.",
+            "Desconecta el piloto automático. Estás a punto de regalarte algo de paz.",
+            "Siente tus pies sobre la tierra. Estás sostenida. Estás segura.",
+            "Regálate el permiso de pausar. El descanso es necesario para seguir adelante.",
+            "Suelta las exigencias. Entra a este espacio vacía de presiones.",
+            "Afloja las manos. Ya has sostenido demasiado hoy.",
+            "Tu único deber en este momento es respirar. Nada más.",
+            "Baja el volumen de tus preocupaciones. Aquí solo importa tu calma.",
+            "Estás haciendo lo correcto al detenerte. Te lo mereces profundamente.",
+            "El ruido exterior no puede entrar aquí. Este es tu espacio de paz.",
+            "Toma una inhalación profunda. Estás a punto de volver a tu centro.",
+            "Relaja el ceño. Estás exactamente donde necesitas estar.",
+            "El peso que llevas puede esperar en la puerta. Entra ligera.",
+            "Agradécete por estar aquí. No siempre es fácil detenerse.",
+            "Permítete ser vulnerable por unos minutos. La fuerza también es descansar.",
+            "Todo lo urgente perderá su urgencia cuando recuperes tu claridad.",
+            "No tienes que ser la mujer fuerte por los próximos 4 minutos.",
+            "Cierra la puerta al caos. Bienvenida a la calma."
+        ];
+
+        const FEEDBACK_MESSAGES = {
+            mejor: [
+                "Qué inmensa alegría. Tu cuerpo te agradece profundamente esta pausa.",
+                "Esa ligereza es toda tuya. Te la has regalado tú.",
+                "Has vuelto a un lugar de paz. Disfruta esta sensación de amplitud.",
+                "La niebla se disipó. Eres dueña de tu atención nuevamente.",
+                "Qué hermoso es verte recuperar tu centro. Llévalo contigo.",
+                "Siente cómo vuelve la vitalidad cuando le das espacio. Lo hiciste muy bien.",
+                "La tensión se deshizo. Tienes el control otra vez.",
+                "Esta calma es el fruto de haberte elegido hoy.",
+                "Maravilloso. Tu sistema nervioso acaba de recibir un abrazo reconfortante.",
+                "Esa paz que sientes es tu puerto seguro. Has vuelto a él.",
+                "Soltaste el peso. Ahora puedes continuar con suavidad.",
+                "Tu sonrisa interna está de vuelta. Se nota desde aquí.",
+                "Respira este momento de bienestar. Es tuyo, aprovéchalo.",
+                "La tensión se fue. Estás lista para seguir a tu propio ritmo.",
+                "Has limpiado el cristal. Todo se ve más claro ahora, ¿verdad?",
+                "Es un alivio profundo, y lo lograste tú. Felicidades por esta victoria.",
+                "Tu cuerpo se siente más liviano por dentro. Buen trabajo.",
+                "Te detuviste, y ganaste mucha paz. El mundo sigue girando, pero tú estás firme.",
+                "Esta es la fuerza de una pequeña pausa. Abrázala.",
+                "Has recargado tus baterías. Adelante con esperanza.",
+                "Ese alivio en el pecho es tu cuerpo diciendo 'gracias'.",
+                "Has silenciado el ruido. Disfruta esta nueva quietud.",
+                "Qué maravilla verte priorizarte y que se sienta tan bien.",
+                "La tormenta pasó. Ahora hay un cielo despejado para ti.",
+                "Has vuelto a habitar tu cuerpo con cuidado y presencia.",
+                "Esa tranquilidad es tuya, nadie te la puede quitar hoy.",
+                "Misión cumplida. Tu mente es un lugar más amable ahora mismo.",
+                "Se siente bien cuidarse, ¿verdad? Guárdalo en tu memoria.",
+                "Has pulsado el botón de reinicio con un éxito rotundo.",
+                "Saboréalo. Has transformado tu día en solo unos minutos."
             ],
-            'recuperar_energia': [
-                { title: 'Baño de Sol', subtitle: 'Tu Recarga de Vida', time: '4 minutos', icon: Sun, color: 'bg-amber-400', finalMessage: 'Estás conectada con la vida. Lista para seguir.', victoryText: 'Luz interior activada.', steps: ["Acércate a una ventana o sal al exterior.", "Deja que la luz natural toque tu rostro. Cierra los ojos.", "Siente cómo el calor tibio recarga tu batería interna."] },
-                { title: 'Despertar Articular', subtitle: 'Movilidad Suave', time: '3 minutos', icon: Activity, color: 'bg-orange-400', finalMessage: 'La energía vuelve a circular por tu cuerpo.', victoryText: 'Cuerpo despierto y ágil.', steps: ["De pie o sentada, haz círculos lentos con tus hombros.", "Ahora mueve tus muñecas y tobillos.", "Siente cómo se libera el estancamiento."] },
-                { title: 'Respiración de Fuego', subtitle: 'Activación Rápida', time: '2 minutos', icon: Wind, color: 'bg-yellow-500', finalMessage: 'Tu sangre está oxigenada. Tienes fuerza.', victoryText: 'Vitalidad recuperada en segundos.', steps: ["Inhala profundo por la nariz, llenando el pecho.", "Exhala fuerte y rápido por la boca.", "Repite 5 veces sintiendo tu poder interior."] },
-                { title: 'El Bosque', subtitle: 'Visualización Verde', time: '4 minutos', icon: Leaf, color: 'bg-lime-500', finalMessage: 'Has traído la vitalidad de la naturaleza a ti.', victoryText: 'Renovación mental completa.', steps: ["Cierra los ojos e imagina un bosque frondoso.", "Respira el olor a tierra mojada y pino.", "Siente cómo la vitalidad de los árboles te llena."] },
-                { title: 'Agua Fría', subtitle: 'Choque de Vitalidad', time: '1 minuto', icon: Droplets, color: 'bg-amber-500', finalMessage: 'Estás completamente despierta y presente.', victoryText: 'Reinicio biológico logrado.', steps: ["Ve al baño y abre el agua fría.", "Moja tus muñecas y el interior de tus brazos.", "Salpica un poco de agua en tu rostro y respira profundo."] }
+            un_poco: [
+                "Cada pequeño respiro cuenta. Has sembrado una semilla de calma hoy.",
+                "Es un gran primer paso. La paz se construye poco a poco.",
+                "Lo importante es que rompiste la inercia del estrés. Bien hecho.",
+                "Un poco de ligereza es infinitamente mejor que el agobio total.",
+                "El cuerpo a veces necesita tiempo para soltar. Vas bien.",
+                "Has quitado una piedra de la mochila. Sigue así.",
+                "Esa pequeña mejoría es una victoria gigante en días pesados.",
+                "Acepta este pequeño alivio con cariño. Mañana será un poco más.",
+                "Estás aprendiendo a frenar. Es un proceso hermoso y gradual.",
+                "No buscamos perfección, buscamos cuidado. Y hoy avanzaste.",
+                "Ese poquito de paz te servirá de apoyo para el resto de tu día.",
+                "Has aflojado el peso. Déjalo que se siga soltando poco a poco.",
+                "Agradécete por este pequeño cambio. Es invaluable.",
+                "Incluso un rayo de luz ilumina la habitación. Quédate con eso.",
+                "Has movido la balanza hacia el bienestar. Celebra ese esfuerzo.",
+                "La preocupación llevaba prisa, tú le pusiste una pausa. Eso es ganar.",
+                "Siente esa sutil diferencia. Es tu cuerpo reconociendo el cuidado.",
+                "No subestimes el poder de un 'poco mejor'. Es pura esperanza.",
+                "Has regado tu interior de paciencia. Pronto verás más frutos.",
+                "La agitación está bajando. Ten paciencia contigo.",
+                "Cualquier alivio, por mínimo que sea, es autocuidado.",
+                "Has encendido una pequeña luz en la confusión. Confía en ella.",
+                "Tu sistema nervioso está tomando nota de este mimo.",
+                "Poco a poco se llega lejos. Hoy elegiste el camino correcto.",
+                "Esa ligera sensación de calma también cuenta como victoria.",
+                "Has suavizado los bordes de tu día. Es un hermoso logro.",
+                "El proceso de recuperar la calma es a sorbitos. Hoy tomaste uno bueno.",
+                "Reconoce este pequeño respiro. Te sostendrá en lo que sigue.",
+                "Has abierto la ventana un centímetro, y entró aire fresco.",
+                "Lo intentaste, y algo cambió. Ese es el verdadero éxito."
             ],
-            'mundo_acelerado': [
-                { title: 'Puerto Seguro', subtitle: 'Suspiro de mi Centro', time: '4 minutos', icon: Wind, color: 'bg-teal-400', finalMessage: 'Estás sostenida. Estás segura en tu centro.', victoryText: 'Paz interior reclamada.', steps: ["Pon tus manos en el vientre. Siente su calor.", "Inhala profundo... deja que tu vientre se expanda.", "Exhala con un suspiro largo. Suelta la carga."] },
-                { title: 'Caja de Calma', subtitle: 'Respiración Cuadrada', time: '3 minutos', icon: Cloud, color: 'bg-emerald-400', finalMessage: 'El ritmo de tu corazón ha vuelto a la normalidad.', victoryText: 'Ansiedad desactivada.', steps: ["Inhala contando hasta 4...", "Sostén el aire contando hasta 4...", "Exhala contando hasta 4, y espera 4 segundos."] },
-                { title: 'El Escudo', subtitle: 'Límites Visuales', time: '2 minutos', icon: Heart, color: 'bg-teal-500', finalMessage: 'Tu espacio es tuyo. Estás protegida.', victoryText: 'Energía propia protegida.', steps: ["Imagina una burbuja dorada a tu alrededor.", "El ruido del mundo choca y resbala por fuera.", "Dentro de tu burbuja solo hay silencio y paz."] },
-                { title: 'Raíces', subtitle: 'Conexión a la Tierra', time: '3 minutos', icon: Leaf, color: 'bg-green-500', finalMessage: 'Eres inamovible frente al caos exterior.', victoryText: 'Estabilidad recuperada.', steps: ["Descalzate si puedes. Pisa firme el suelo.", "Imagina que de tus pies salen raíces hacia el centro de la tierra.", "Siente el soporte firme del planeta bajo de ti."] },
-                { title: 'Pausa Auditiva', subtitle: 'Manos en los Oídos', time: '2 minutos', icon: Activity, color: 'bg-teal-600', finalMessage: 'Has bajado el volumen del mundo exterior.', victoryText: 'Silencio interior encontrado.', steps: ["Cubre tus oídos con las palmas de tus manos.", "Escucha el sonido de tu propio océano interno.", "Quédate ahí, disfrutando de tu propio silencio."] }
-            ],
-            'corazon_pausa': [
-                { title: 'Mi Cita Sagrada', subtitle: 'Reencuentro con mi Brillo', time: '5 minutos', icon: Heart, color: 'bg-purple-400', finalMessage: 'Eres importante. Llevas este brillo contigo.', victoryText: 'Amor propio cultivado.', steps: ["Toma una crema de manos o simplemente entrelaza tus dedos.", "Siente la suavidad de tu piel. Estas manos sostienen mucho.", "Reconoce algo valiente que hayas hecho hoy por ti."] },
-                { title: 'Muro de Tesoros', subtitle: 'Gratitud Rápida', time: '3 minutos', icon: Sparkles, color: 'bg-pink-400', finalMessage: 'Hay belleza en tu vida y tú eres parte de ella.', victoryText: 'Foco en lo positivo logrado.', steps: ["Cierra los ojos y piensa en una cosa pequeña que te hizo sonreír hoy.", "Puede ser el olor al café, una brisa, una cobija suave.", "Siente gratitud en el centro de tu pecho."] },
-                { title: 'El Autoabrazo', subtitle: 'Contención Física', time: '2 minutos', icon: Flower, color: 'bg-fuchsia-400', finalMessage: 'Tú misma eres tu mejor refugio.', victoryText: 'Contención emocional completada.', steps: ["Cruza tus brazos sobre tu pecho.", "Acaricia suavemente tus hombros de arriba a abajo.", "Dite a ti misma: 'Estoy haciendo lo mejor que puedo'."] },
-                { title: 'El Espejo', subtitle: 'Palabras de Poder', time: '2 minutos', icon: Sun, color: 'bg-purple-500', finalMessage: 'Tu voz es la más importante que escucharás hoy.', victoryText: 'Identidad reafirmada.', steps: ["Si puedes, mírate a un espejo. O visualiza tu rostro.", "Mírate a los ojos con compasión.", "Di internamente: 'Soy valiosa, soy sabia, soy suficiente'."] },
-                { title: 'El Saboreo', subtitle: 'Mimo Sensorial', time: '4 minutos', icon: Coffee, color: 'bg-rose-400', finalMessage: 'Te mereces los pequeños placeres de la vida.', victoryText: 'Alegría en los detalles.', steps: ["Busca un trozo de chocolate, fruta o algo que te guste mucho.", "No lo comas aún. Huele su aroma.", "Ponlo en tu boca y deja que se deshaga lentamente, sin prisa."] }
+            igual: [
+                "Está bien. A veces la tensión tarda más en soltarse. Lo más valiente hoy fue intentarlo.",
+                "No has fallado. Hay días donde la carga es muy pesada. Te abrazo fuerte.",
+                "Tu cuerpo aún está en guardia, y es comprensible. Tenle mucha paciencia.",
+                "No siempre hay alivio instantáneo, pero tu intento de cuidarte queda registrado.",
+                "Estar aquí, a pesar de que pese, es un acto inmenso de cuidado propio.",
+                "No te juzgues. A veces solo necesitamos sentarnos en silencio junto a la tristeza o el agobio.",
+                "El mundo ha exigido mucho de ti. Es normal que cueste soltar. Estoy contigo.",
+                "Respira. No hay presión por sentirse bien rápido. Tu proceso es respetado aquí.",
+                "Hoy fue un día duro. El simple hecho de abrir este espacio te hace valiente.",
+                "Tu cuerpo necesita más tiempo. No lo apresures, acompáñalo con dulzura.",
+                "Está bien no estar bien. Este lugar seguro no te exige resultados.",
+                "A veces la preocupación es un abrigo pesado difícil de quitar. Mañana lo intentamos de nuevo.",
+                "Mírate con compasión. Estás haciendo lo mejor que puedes con lo que tienes.",
+                "La confusión hoy es espesa. Caminaremos más despacio, no te preocupes.",
+                "No te frustres. Has dado un paso, aunque hoy no veas el resultado completo.",
+                "Reconocer que aún pesa es un acto de honestidad brutal. Te honro por ello.",
+                "Permítete sentirlo. No tienes que arreglarlo todo el día de hoy.",
+                "Tu cuerpo escuchó tu intención de cuidarlo. Confía en eso en silencio.",
+                "Mañana será otro día. Por hoy, envuélvete en mucha autocompasión y gracia.",
+                "A veces solo podemos sostener nuestra propia mano en la dificultad. Eso hiciste.",
+                "La agitación interna a veces habla muy fuerte. No luches contra ella, solo obsérvala.",
+                "No hay prisa en este espacio. Puedes quedarte el tiempo que necesites descansar.",
+                "Tu cansancio es muy válido. Reconócelo tú también sin sentirte culpable.",
+                "El primer paso no siempre cambia el paisaje, pero te saca de la inercia.",
+                "Eres humana, no una máquina. Permitirte la pausa ya es un triunfo enorme.",
+                "Abrázate en este momento. La paciencia contigo misma es poderosa.",
+                "Si no lograste soltar, solo descansa las manos un rato. Está bien.",
+                "Recuperar la calma no es un camino recto. Hoy es un día de sostenerte con ternura.",
+                "Te veo, te valido, te acompaño. No tienes que fingir que todo mejoró.",
+                "Cierra los ojos un segundo más. Todo estará bien a su debido tiempo, ten fe."
             ]
         };
 
-        const REFUGE_LIBRARY = {};
-        const ICONS = [Droplets, Wind, Leaf, Activity, Coffee, Sun, Cloud, Heart, Sparkles, Flower];
+        const FAREWELL_MESSAGES = [
+            "Nos vemos mañana para seguir cuidando de ti.",
+            "Un día a la vez. Ve tranquila.",
+            "Lleva esta suavidad contigo el resto del día.",
+            "Eres tu proyecto más hermoso. Hasta mañana.",
+            "El mundo te espera, pero ahora vas con más claridad.",
+            "Que tengas un descanso profundo y reparador.",
+            "Recuerda: eres tu propia prioridad. Nos vemos pronto.",
+            "Un paso más hacia tu paz interior. Descansa.",
+            "Cierra la puerta despacio. Estás lista.",
+            "Sigue avanzando con fe, el jardín te esperará mañana."
+        ];
 
-        // Generador para cumplir el requisito de 20 refugios por categoría (80 en total)
-        Object.keys(BASE_TEMPLATES).forEach(cat => {
-            REFUGE_LIBRARY[cat] = [];
-            let iconIndex = 0;
-            for (let i = 0; i < 20; i++) {
-                const template = BASE_TEMPLATES[cat][i % 5];
-                REFUGE_LIBRARY[cat].push({
-                    id: `${cat}_refuge_${i + 1}`,
-                    title: `${template.title} ${i > 4 ? `(Fase ${Math.floor(i/5) + 1})` : ''}`,
-                    subtitle: template.subtitle,
-                    time: template.time,
-                    icon: ICONS[iconIndex % ICONS.length], 
-                    color: template.color,
-                    finalMessage: template.finalMessage,
-                    victoryText: template.victoryText,
-                    steps: template.steps
-                });
-                iconIndex++;
-            }
-        });
+        // ==========================================
+        // 2. CATEGORÍAS DEL JARDÍN (LOS REGALOS)
+        // ==========================================
+        const GARDEN_CATEGORIES = [
+            { id: 'alma', title: 'Para el alma', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-50', border: 'border-rose-100' },
+            { id: 'smoothies', title: 'Smoothies reconfortantes', icon: Coffee, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100' },
+            { id: 'desayunos', title: 'Desayunos sencillos', icon: Sun, color: 'text-yellow-500', bg: 'bg-yellow-50', border: 'border-yellow-100' },
+            { id: 'almuerzos', title: 'Almuerzos rápidos', icon: Utensils, color: 'text-orange-400', bg: 'bg-orange-50', border: 'border-orange-100' },
+            { id: 'cenas', title: 'Cenas reconfortantes', icon: Moon, color: 'text-indigo-400', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+            { id: 'snacks', title: 'Snacks saludables', icon: Apple, color: 'text-red-400', bg: 'bg-red-50', border: 'border-red-100' },
+            { id: 'microhabitos', title: 'Microhábitos', icon: Droplets, color: 'text-sky-400', bg: 'bg-sky-50', border: 'border-sky-100' },
+            { id: 'descanso', title: 'Ideas para descansar', icon: Cloud, color: 'text-purple-400', bg: 'bg-purple-50', border: 'border-purple-100' },
+            { id: 'movimiento', title: 'Movimiento suave', icon: Activity, color: 'text-emerald-400', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+            { id: 'frases', title: 'Frases que abrazan', icon: Sparkles, color: 'text-fuchsia-400', bg: 'bg-fuchsia-50', border: 'border-fuchsia-100' }
+        ];
 
-        // --- COMPONENTES UI ---
+        const GARDEN_GIFTS_DB = {
+            'alma': [
+                { title: 'Un Recordatorio', text: 'El autocuidado no es egoísmo; es el mantenimiento básico y hermoso que necesitas para poder seguir sirviendo a los demás con luz.' },
+                { title: 'Permiso para Parar', text: 'A veces, la decisión más productiva, inteligente y valiente que puedes tomar al final del día es simplemente rendirte y descansar.' },
+                { title: 'Tu Propio Ritmo', text: 'No estás compitiendo con la mujer que fuiste a los 30. Estás conociendo a la mujer sabia en la que te estás convirtiendo.' },
+                { title: 'Soltar la Culpa', text: 'Decir "no" a las demandas excesivas para decirte "sí" a ti misma es el principio de tu verdadera salud emocional.' },
+                { title: 'Reconoce tu Trabajo', text: 'Sostener una casa, una familia o una vida requiere una energía colosal. Lo que haces todos los días es extraordinario. Reconócelo.' },
+                { title: 'El Derecho a Sentir', text: 'No tienes que estar siempre feliz ni siempre fuerte. Date permiso de sentir exactamente lo que sientes hoy, sin juzgarlo ni reprimirlo.' },
+                { title: 'La Mujer del Espejo', text: 'Mírate con la misma ternura con la que mirarías a una amiga muy cansada. Eres tu amiga más importante.' },
+                { title: 'Suficiente', text: 'Lo que lograste hacer hoy, así fuera solo salir de la cama, trabajar y respirar, fue suficiente a los ojos del cielo.' },
+                { title: 'Tu Carga', text: 'Has cargado el mundo entero en tus hombros. Hoy, este espacio te invita a soltarlo un rato. El mundo sabrá esperarte.' },
+                { title: 'Paz Interna', text: 'Nadie fuera de ti puede darte la paz duradera. Se construye así, en pequeños espacios de pausa, gratitud y silencio diarios.' },
+                { title: 'Una Pequeña Oración', text: 'Si te da paz, cierra los ojos un instante y eleva una pequeña oración o agradecimiento sincero. No necesitas palabras perfectas, solo un corazón dispuesto a descansar.' },
+                { title: 'Gracia para Hoy', text: 'No necesitas tener todo resuelto para esta noche. Concéntrate en la gracia y la fuerza que recibiste solo para el día de hoy.' },
+                { title: 'Esperanza', text: 'Incluso los días más grises y agotadores tienen un fin. Respira profundo, mañana el sol volverá a salir con nuevas misericordias.' },
+                { title: 'Raíces Fuertes', text: 'Los vientos fuertes no te van a quebrar. Tienes raíces profundas formadas por todas las pruebas que ya superaste en el pasado.' },
+                { title: 'Silencio Sanador', text: 'Regálate cinco minutos de silencio total. Es en la quietud donde el corazón suele encontrar las respuestas que la ansiedad oculta.' }
+            ],
+            'smoothies': [
+                { title: 'Smoothie Abrazo', text: 'Banano maduro, leche de almendras, canela tibia y avena. Prepáralo despacio. También estás alimentando a la mujer que ha cuidado de todos hoy.' },
+                { title: 'Luz de Mañana', text: 'Piña dulce, media naranja y un toquecito de jengibre. Los días no siempre empiezan con energía. A veces empiezan con un pequeño sorbo.' },
+                { title: 'Pausa Verde', text: 'Espinaca fresca, manzana, pepino y limón. No tienes que sentirte perfecta para empezar a sentirte mejor. Tómalo frío y siente la frescura.' },
+                { title: 'Cacao Calma', text: 'Leche tibia, cacao amargo, un chorrito de vainilla y miel. El chocolate caliente es un abrazo al sistema nervioso. Bébelo sin prisa.' },
+                { title: 'Brisa de Frutos Rojos', text: 'Fresas, arándanos, yogur natural y hielo. Un golpe de frescura para esos momentos donde tu mente necesita un respiro dulce y rápido.' },
+                { title: 'Energía Suave', text: 'Mango, coco rallado, agua de coco. Sabor a verano. Porque siempre puedes traer un rayito de sol a tu cocina.' },
+                { title: 'Respiro de Almendra', text: 'Mantequilla de almendra, banano, leche. Denso, dulce, reconfortante. Como una manta suave en una tarde fría.' },
+                { title: 'Despertar Naranja', text: 'Zanahoria, naranja, un toque de cúrcuma. Un color que grita vida. Bebe este color intenso y siente cómo despiertas.' },
+                { title: 'Menta y Limón', text: 'Hojas de menta, limón, pepino, hielo triturado. Cuando el día pesa, el frío y la menta te devuelven al presente de un solo golpe.' },
+                { title: 'Dulce Noche', text: 'Leche dorada con cúrcuma, canela y pimienta suave. Tu cuerpo ya trabajó suficiente hoy. Este es el sabor de decir "basta por hoy".' },
+                { title: 'Tarde Turquesa', text: 'Arándanos y leche de coco. Un color precioso, un sabor delicado. Prepararlo solo para ti es un acto de amor propio.' },
+                { title: 'Abrazo de Vainilla', text: 'Leche tibia, esencia pura de vainilla y un toque de miel. Simple, clásico, infantil. Te devuelve a tiempos donde todo era más sencillo.' },
+                { title: 'Cacao y Menta', text: 'Cacao, leche, hojitas de menta fresca. El equilibrio perfecto entre consuelo y frescura para media tarde.' },
+                { title: 'Despertar de Fresa', text: 'Fresas frescas, yogur, y una cucharada de avena. Un desayuno completo en un vaso cuando la mañana pide rapidez pero nutrición.' },
+                { title: 'Dorado Atardecer', text: 'Papaya, zanahoria y jengibre suave. Dulce y protector para el estómago después de un día de estrés digestivo.' },
+                { title: 'Nube de Durazno', text: 'Duraznos bien maduros, leche y mucho hielo. Esponjoso y ligero. Bébelo con los ojos cerrados.' },
+                { title: 'Caricia de Manzana y Canela', text: 'Manzana asada o cocida licuada con leche tibia y canela. Como un postre de otoño en una taza que te calma el corazón.' },
+                { title: 'Frescura de Melón', text: 'Melón, mucha agua y hojas de menta. Hidratación absoluta y ligera cuando el cuerpo retiene líquidos por el cansancio.' },
+                { title: 'Energía Verde Suave', text: 'Espinaca, medio banano congelado y agua. Ni siquiera notarás lo verde, solo sentirás la energía limpia entrando a tu cuerpo.' },
+                { title: 'Suspiro de Papaya', text: 'Papaya, agua, y un chorrito de limón. El mejor amigo de tu digestión cuando los nervios te han cerrado el estómago.' }
+            ],
+            'desayunos': [
+                { title: 'Tostada de Calma', text: 'Pan integral tostado, aguacate machacado, un chorrito de aceite de oliva. 5 minutos. Disfruta el crujido de morder algo hecho solo para ti.' },
+                { title: 'Avena del Día Anterior', text: 'Avena, leche, semillas de chía, dejadas en la nevera anoche. Un regalo preparado por ti en el pasado, para que la mujer de hoy descanse.' },
+                { title: 'Panqueque Rápido', text: 'Medio banano machacado, un huevo, cucharada de avena. Mezclar, dorar, disfrutar. Un mimo dulce para recordarte que la vida no tiene que ser dura.' },
+                { title: 'Huevos del Domingo', text: 'Huevos revueltos muy suaves, cocinados lento con un toque de queso. No esperes al fin de semana para desayunar rico. Hoy es un buen día.' },
+                { title: 'Yogur con Color', text: 'Yogur natural, arándanos, un puñado de nueces. Tardarás 1 minuto en prepararlo. Tardarás 5 en disfrutarlo. Y tu energía te lo agradecerá horas.' },
+                { title: 'Tostada Dulce', text: 'Pan crujiente, mantequilla de maní, rodajas de banano y canela. Ese cruce perfecto entre lo salado y lo dulce. Se siente como un premio.' },
+                { title: 'Tazón de Agua y Fruta', text: 'Papaya, melón, sandía fresca. Agua, color y vitaminas. Para los días donde masticar ligero es todo lo que puedes y quieres hacer.' },
+                { title: 'Huevos Tibios', text: 'Dos huevos pasados por agua, yemas cremosas. Calientes por dentro, perfectos. Acompáñalos con un pan crujiente y cinco minutos de total paz.' },
+                { title: 'Batido Fuerte', text: 'Avena, espinaca, banano, proteína o yogur. Para los días donde sabes que no pararás. Un escudo protector nutritivo para tu estómago.' },
+                { title: 'Sándwich Clásico', text: 'Jamón de pavo, queso derretido, tomate. Lo clásico no falla. Un desayuno caliente que te abraza desde el primer bocado crujiente.' },
+                { title: 'Pan con Queso Fresco y Miel', text: 'Una rebanada gruesa de pan, queso fresco blanco y un hilito de miel pura. Contraste maravilloso que te alegra la mañana en 2 minutos.' },
+                { title: 'Huevos en Canasta', text: 'Hazle un huequito redondo a un pan de molde, ponlo en la sartén y quiebra el huevo en el centro. Divertido, diferente y te saca de la rutina.' },
+                { title: 'Avena Caliente con Manzana', text: 'Avena cocida en leche con trocitos de manzana fresca y canela. Es el desayuno que te abraza por dentro cuando amaneces con frío.' },
+                { title: 'Yogur con Canela y Semillas', text: 'Yogur espeso, mucha canela espolvoreada y semillas de calabaza. Crujiente, saciante y estabiliza tu ánimo de inmediato.' },
+                { title: 'Tostada de Tomate Rallado', text: 'Pan tostado frotado con ajo, tomate natural rallado y aceite de oliva. Fresco, mediterráneo y un verdadero placer sencillo.' },
+                { title: 'Batido Grueso de Banano y Avena', text: 'Licúa muy poco líquido para que quede espeso, cómelo con cuchara. Se siente como un helado, pero te da la fuerza de un desayuno completo.' },
+                { title: 'Tortilla Francesa Suave', text: 'Dos huevos batidos, hechos vuelta y vuelta muy rápido para que queden jugosos. Con sal y pimienta. Acompáñalo con tu café en paz.' },
+                { title: 'Arepa o Tortilla de Maíz con Queso', text: 'Maíz calentito con queso blanco que se derrite en el medio. Ese olor a maíz asado es el mejor aromaterapia de la mañana.' },
+                { title: 'Fruta Picada con Limón y Nueces', text: 'Manzana y pera picada finamente, bañada en jugo de limón fresco y nueces trituradas. Despierta todos tus sentidos con su acidez.' },
+                { title: 'Galletas de Arroz con Mantequilla de Maní', text: 'Rápido, ligero y crujiente. Úntalas sin prisa. Perfectas para esos días donde el hambre es poca pero necesitas combustible.' }
+            ],
+            'almuerzos': [
+                { title: 'Ensalada Color', text: 'Hojas verdes, tomate, aguacate, atún, aceite de oliva. Cero cocción. Frescura inmediata para tu cuerpo cuando la energía está al límite.' },
+                { title: 'Sopa Abrazo', text: 'Sopa de fideos rápida en caldo caliente, con un huevo pochado adentro. El calor líquido alivia la tensión del estómago al instante.' },
+                { title: 'Pasta de 10 Minutos', text: 'Pasta sobrante, saltéala con mucho ajo, aceite de oliva y queso parmesano. La comida reconfortante que abraza el alma cansada.' },
+                { title: 'Bowl de Quinoa', text: 'Quinoa cocida, restos de pollo, verduras picadas. Mezcla todo en un tazón hermoso. Comer en un bowl da una extraña sensación de confort.' },
+                { title: 'Wrap de Atún', text: 'Tortilla integral, atún, mayonesa suave, lechuga. Enróllalo rápido. Una comida completa y deliciosa que no te roba más de 3 minutos.' },
+                { title: 'Pollo al Limón', text: 'Pechuga a la plancha bañada en jugo de limón y pimienta. Acompañada de ensalada de bolsa. Básico, saciante y sin culpas.' },
+                { title: 'Arroz Salvador', text: 'Ese arroz que quedó en la nevera, mézclalo con un huevo frito encima y un toque de salsa de soja. Humilde, rápido y profundamente rico.' },
+                { title: 'Tomate Relleno', text: 'Abre un tomate grande, quítale el centro, rellénalo de atún o queso cottage. Fresco, crujiente, sin estufa, puro bienestar.' },
+                { title: 'Quesadillas Rápidas', text: 'Dos tortillas de maíz o trigo, buen queso que se derrita, champiñones o espinaca. Vuelta y vuelta en la sartén. Placer caliente y crujiente.' },
+                { title: 'Plato Combinado', text: 'No cocines. Pon en un plato hermoso: trozos de queso, jamón, nueces, fruta picada, galletas. Un picnic de interior solo para ti.' },
+                { title: 'Fajitas de Pollo Exprés', text: 'Tiras de pollo doradas rápido con pimientos. Ponlas en una tortilla suave. Un almuerzo divertido que te saca de la monotonía.' },
+                { title: 'Ensalada de Lentejas Fáciles', text: 'Lentejas de bote lavadas, tomate picado, cebolla morada y vinagreta. Fibra y energía estable para no caer dormida a las 3 PM.' },
+                { title: 'Tostadas de Pollo Desmenuzado', text: 'Pollo que haya sobrado, desmenuzado sobre tostadas crujientes con aguacate abajo. Fácil de comer con las manos.' },
+                { title: 'Sopa de Lentejas Caliente', text: 'Calienta lentejas con un poco de caldo extra y verduras. Tómalo en taza si estás trabajando. Comida real que te sostiene.' },
+                { title: 'Wrap de Huevo Revuelto', text: 'Un huevo revuelto rápido metido en una tortilla con espinacas frescas. El desayuno convertido en un almuerzo salvador.' },
+                { title: 'Atún con Garbanzos', text: 'Mezcla una lata de atún con garbanzos cocidos, aceite de oliva y mucho limón. Fresco, llenador y cero ollas que lavar.' },
+                { title: 'Aguacate Relleno', text: 'Corta un aguacate a la mitad, quita la semilla y ponle atún o ensalada de pollo en el centro. Comerás directo de su cáscara.' },
+                { title: 'Pasta con Pesto de Bote', text: 'Hierve la pasta 8 minutos, revuélvela con un buen pesto comprado y queso rallado. Sofisticado en sabor, mínimo en esfuerzo.' },
+                { title: 'Salteado de Verduras Congeladas', text: 'Bolsa de verduras al sartén con salsa de soja y cacahuetes. Las verduras congeladas son tus amigas cuando el tiempo falta.' },
+                { title: 'Sándwich de Huevo Duro', text: 'Huevo duro picado con un toquecito de mayonesa y mostaza en pan suave. Clásico, cremoso y muy nostálgico.' }
+            ],
+            'cenas': [
+                { title: 'Crema Caliente', text: 'Crema de verduras servida muy caliente en una taza. Bébetela en el sofá, envuelta en una manta. Fin del día.' },
+                { title: 'Huevos Rotos', text: 'Revuelve un par de huevos con tomates picados. No necesitas una receta perfecta, solo comida real que te abrace.' },
+                { title: 'Tostada Francesa', text: 'Pan pasado por huevo batido y leche, dorado a la sartén. Desayunar de noche es un acto de autocuidado delicioso.' },
+                { title: 'Caldo de Pollo', text: 'Un caldo ligero, caliente, con un toque de limón. Es el equivalente a que alguien te acaricie el pelo antes de dormir.' },
+                { title: 'Tacos Ligeros', text: 'Tortillas pequeñas, queso derretido, trozos de aguacate. Comer con las manos relaja la formalidad del día. Disfruta.' },
+                { title: 'Sopa de Tomate Rápida', text: 'Sopa de tomate casera o envasada de buena calidad, muy caliente, con cuadritos de queso fresco que se derritan dentro.' },
+                { title: 'Espinacas Salteadas con Huevo', text: 'Saltea espinacas con un poquito de ajo y estrella un huevo encima. Tapas la sartén 3 minutos y listo. Súper nutritivo.' },
+                { title: 'Pan Pita Integral con Queso y Orégano', text: 'Calienta un pan pita, ábrelo y ponle queso y orégano. Crujiente, ligero y te quita el antojo de pizza sin pesadez.' },
+                { title: 'Pechuga a la Plancha con Limón', text: 'Un filete fino, vuelta y vuelta. Acompáñalo solo con rodajas de tomate. Ligero para que duermas profundo y sin acidez.' },
+                { title: 'Ensalada Caprese Sencilla', text: 'Rodajas de tomate, mozzarella, aceite de oliva y albahaca (o orégano). Fresco, hermoso a la vista y muy fácil de digerir.' },
+                { title: 'Calabacín Salteado', text: 'Corta calabacín en rodajas finas, dóralo en la sartén con un hilito de aceite y sal. Parece sencillo, pero el sabor asado te calmará.' },
+                { title: 'Rollitos de Jamón y Queso', text: 'Si no quieres ni prender la estufa: enrolla jamón de pavo alrededor de bastones de queso y cómetelos con pepino fresco al lado.' },
+                { title: 'Champiñones al Ajillo Rápido', text: 'Champiñones laminados, un minuto al sartén con ajo y perejil. Comer hongos de noche da una sensación de saciedad muy terrenal.' },
+                { title: 'Crema de Calabaza', text: 'Comprada o rápida. Tómala muy espesa. El color naranja y el dulzor natural le mandan señales de relajación a tu cerebro.' },
+                { title: 'Tostada de Atún Caliente', text: 'Atún sobre pan, queso encima, al horno o sartén tapada hasta que gratine. Ese calor crujiente te reconfortará instantáneamente.' },
+                { title: 'Manzana y Queso', text: 'Rodajas de manzana fresca y trozos de queso maduro. Contraste de texturas perfecto para una noche donde no quieres platos calientes.' },
+                { title: 'Papa Asada Rápida', text: 'Una papa al microondas (6 min), ábrela, ponle mantequilla y sal. Maravilla absoluta, caliente, humeante y lista sin esfuerzo.' },
+                { title: 'Sándwich Caliente', text: 'Pan, queso, tomate, plancha hasta que el queso se desborde. La textura crujiente libera tensión en la mandíbula al masticar.' },
+                { title: 'Yogur de Noche', text: 'Yogur natural, miel, un toque de canela. Para esas noches de agotamiento donde la estufa parece tu peor enemiga. Nutre y calma.' },
+                { title: 'Avena Nocturna Caliente', text: 'Avena cocida caliente con un toque de vainilla y banano. Te ayuda a bajar las revoluciones, dormir profundo y en paz.' }
+            ],
+            'snacks': [
+                { title: 'Manzana y Crema de Maní', text: 'Corta una manzana crujiente. Unta cada rebanada. Mastica despacio. El azúcar natural y la proteína estabilizan tu humor en segundos.' },
+                { title: 'Puñado de Nueces', text: 'El frasco de la memoria: almendras y nueces. No comas trabajando. Para 2 minutos, come tu puñado mirando a una ventana. Son medicina.' },
+                { title: 'Chocolate Oscuro', text: 'Un solo cuadro. Ponlo en tu lengua, no lo muerdas. Deja que se derrita lentamente. Siente el relax en tus músculos.' },
+                { title: 'Zanahorias y Hummus', text: 'Masticar zanahorias libera la tensión acumulada en la mandíbula tras un día largo. Hazlo despacio y con consciencia.' },
+                { title: 'Yogur Congelado', text: 'Gotas de yogur congeladas sobre papel encerado. Frescas, como mini helados que despiertan los sentidos cuando ataca el sueño de las 4 PM.' },
+                { title: 'Bastones de Apio con Limón', text: 'Crujientes, llenos de agua y frescura. El ácido del limón te dará un choque de atención inmediata si te sientes adormilada.' },
+                { title: 'Tomates Cherry con Sal', text: 'Lava un puñado, ponles sal gruesa. Ese estallido de jugo al morderlos es un pequeñísimo placer terrenal que te ancla al presente.' },
+                { title: 'Galletas Integrales con Queso Crema', text: 'Unte suave, textura firme debajo. Un snack que te recuerda a las meriendas de la infancia. Cómelo sin prisa.' },
+                { title: 'Almendras Tostadas Calientes', text: 'Pásalas por una sartén sin aceite 2 minutos hasta que huelan a tostado. Comerlas tibias cambia por completo la experiencia.' },
+                { title: 'Medio Banano con Canela', text: 'Súper rápido y lleno de potasio. La canela estabiliza el azúcar y te quita la ansiedad por comer pan o dulces pesados.' },
+                { title: 'Trozos de Coco Fresco', text: 'Masticar coco requiere fuerza, lo cual es excelente para descargar estrés, y sus grasas te mantienen sin hambre por horas.' },
+                { title: 'Un Huevo Duro con Pimienta', text: 'Proteína pura de emergencia. Cómetelo despacio, la proteína frena el pico de ansiedad de la tarde de inmediato.' },
+                { title: 'Gelatina sin Azúcar Fría', text: 'Sácala muy fría de la nevera. No aporta casi nada, pero la textura resbaladiza y fresca engaña al cerebro dándole un respiro.' },
+                { title: 'Mandarinas Frías', text: 'Pelar una mandarina ensucia las manos con un aroma maravilloso que levanta el ánimo. Comer los gajos fríos es una delicia.' },
+                { title: 'Infusión de Manzanilla con Miel', text: 'Un snack líquido. A veces no tienes hambre, tienes sed o ansiedad. La manzanilla tibia es un abrazo directo al sistema nervioso.' },
+                { title: 'Galletas de Arroz', text: 'Galletas infladas con un toque de aguacate encima. Ligeras como el aire, pero te quitan la sensación de estómago vacío.' },
+                { title: 'Taza de Edamames', text: 'Calientes, con sal gruesa. Pelarlos con los dientes requiere atención plena, sacándote del bucle de preocupaciones.' },
+                { title: 'Rodajas de Pepino', text: 'Con limón y un toque de sal. Cuando sientas pesadez, esto es agua sólida que desinflama y refresca tu cuerpo.' },
+                { title: 'Un Dátil con Nuez', text: 'Abre un dátil, quita el hueso, pon una nuez dentro. Un estallido de vitalidad dulce que tu cerebro amará cuando se sienta apagado.' },
+                { title: 'Queso y Uvas', text: 'El maridaje perfecto. Comer fruta fresca con proteína frena el pico de ansiedad y te mantiene estable hasta la hora de cenar.' }
+            ],
+            'microhabitos': [
+                { title: 'La Pausa del Lavado', text: 'Esta noche, cuando te laves la cara, no lo hagas con prisa. Masajea tu piel lentamente como si estuvieras limpiando las tensiones del día.' },
+                { title: 'Pausa de Hombros', text: 'Pon una nota en tu espejo: "Suelta los hombros". Cada vez que la veas, hazlo. Es un micro-reseteo para tu postura y tu mente.' },
+                { title: 'El Primer Vaso', text: 'Antes de que el mundo te pida algo, antes del primer café, tómate un vaso de agua fresca. Es una señal de que estás cuidando primero de ti.' },
+                { title: 'Silencio en el Coche', text: 'La próxima vez que manejes sola, haz los primeros 5 minutos en completo silencio. Sin radio, sin podcast. Solo observa.' },
+                { title: 'Un Bocado Consciente', text: 'En tu próxima comida, come el primer bocado con los ojos cerrados. Saborea la textura. Es un micro-escape de la prisa.' }
+            ],
+            'descanso': [
+                { title: 'Apagar el Ruido', text: 'Hoy, ponte el reto de apagar el celular 30 minutos antes de dormir. Reemplázalo por un libro o simplemente por el silencio.' },
+                { title: 'Temperatura Ideal', text: 'Intenta dormir hoy con la habitación un poco más fría y una manta extra. El contraste ayuda a tu cuerpo a entrar en letargo.' },
+                { title: 'Piernas a la Pared', text: 'Acuéstate en la cama y apoya las piernas contra la pared por 3 minutos. La sangre regresa, las piernas descansan y el corazón se calma.' },
+                { title: 'Oscuridad Total', text: 'Asegúrate de que no haya ninguna luz LED parpadeando en tu habitación hoy. Tapa los cargadores. Tu cerebro necesita oscuridad.' },
+                { title: 'Bostezo Falso', text: 'Haz tres bostezos grandes y exagerados (incluso si no tienes sueño). Tu cerebro recibe la señal física de que es seguro relajarse.' }
+            ],
+            'movimiento': [
+                { title: 'Estirón de Gata', text: 'Esta noche, estírate hacia arriba como si quisieras tocar el techo. Suelta los brazos de golpe con un suspiro profundo. Hazlo 3 veces.' },
+                { title: 'Giro de Cuello', text: 'Deja caer tu oreja derecha hacia tu hombro derecho. Respira. Ahora al lado izquierdo. Siente tu cuerpo liberarse de la carga.' },
+                { title: 'Círculos de Cadera', text: 'Ponte de pie, pon las manos en tu cintura y haz círculos muy amplios y lentos. Libera la tensión acumulada en tu centro.' },
+                { title: 'Caminar sin Rumbo', text: 'Date el lujo de caminar 10 minutos sin celular, sin contar los pasos y sin prisa. No es ejercicio, es dejar que el aire te dé en la cara.' },
+                { title: 'Sacudir las Manos', text: 'Levanta las manos y sacúdelas fuerte durante 10 segundos, como quitándote agua. Extraordinario para soltar tensión en brazos.' }
+            ],
+            'frases': [
+                { title: 'Afirmación de Hoy', text: '"Hago lo mejor que puedo con lo que tengo, y en este momento de mi vida, eso es maravillosamente suficiente".' },
+                { title: 'Tu Carga', text: '"No tengo que tener todo resuelto hoy, ni mañana, para tener derecho a estar en paz y ser plenamente valorada".' },
+                { title: 'Tu Verdad', text: '"Mi valor no se mide por mi productividad diaria. Mi valor reside en mi simple, imperfecta y hermosa humanidad".' },
+                { title: 'Límites', text: '"Cada vez que digo \'no\' a una exigencia que me agota, le estoy diciendo un \'sí\' gigante a mi salud y a mi descanso".' },
+                { title: 'Suavidad', text: '"Elijo tratarme con la misma paciencia, gracia y amor con la que trato a las personas que más quiero en esta vida".' }
+            ]
+        };
+
+        // ==========================================
+        // 3. BIBLIOTECA DE 100 REFUGIOS ÚNICOS (25 por categoría)
+        // ==========================================
+        const EMOTION_CATEGORIES = {
+            'mente_nublada': { id: 'mente_nublada', title: 'Mente Nublada', icon: Brain, color: 'bg-sky-50 text-sky-800 border-sky-100', accent: 'bg-sky-400', validation: 'Tu mente no te está fallando, solo está sosteniendo demasiado. Vamos a darle un respiro.' },
+            'recuperar_energia': { id: 'recuperar_energia', title: 'Recuperar Energía', icon: BatteryCharging, color: 'bg-amber-50 text-amber-800 border-amber-100', accent: 'bg-amber-400', validation: 'No es falta de voluntad, es tu cuerpo pidiendo cuidado. Vamos a recargar juntas.' },
+            'mundo_acelerado': { id: 'mundo_acelerado', title: 'Mundo Acelerado', icon: Wind, color: 'bg-teal-50 text-teal-800 border-teal-100', accent: 'bg-teal-400', validation: 'Estás a salvo. Por estos próximos minutos, el mundo allá afuera puede esperar.' },
+            'corazon_pausa': { id: 'corazon_pausa', title: 'Corazón en Pausa', icon: Heart, color: 'bg-purple-50 text-purple-800 border-purple-100', accent: 'bg-purple-400', validation: 'Te veo. Eres inmensamente valiosa no por lo que resuelves, sino por quien eres.' }
+        };
+
+        const M_ICONS = [Droplets, Wind, Leaf, Activity, Coffee, Sun, Cloud, Sparkles];
+        const M_COLORS = ['bg-sky-400', 'bg-blue-400', 'bg-indigo-400', 'bg-cyan-500', 'bg-sky-500'];
+        const E_COLORS = ['bg-amber-400', 'bg-orange-400', 'bg-yellow-500', 'bg-lime-500', 'bg-amber-500'];
+        const A_COLORS = ['bg-teal-400', 'bg-emerald-400', 'bg-teal-500', 'bg-green-500', 'bg-teal-600'];
+        const C_COLORS = ['bg-purple-400', 'bg-pink-400', 'bg-fuchsia-400', 'bg-purple-500', 'bg-rose-400'];
+
+        const REFUGE_LIBRARY = {
+            'mente_nublada': [
+                { title: 'Agua Consciente', subtitle: 'Limpieza mental', time: '3 min', steps: ["Sirve un vaso de agua fresca lentamente...", "Siente el frío del cristal en tus manos.", "Bebe un sorbo y siente cómo despeja tu garganta."] },
+                { title: 'Brisa Interior', subtitle: 'Foco azul', time: '4 min', steps: ["Cierra los ojos y nota el aire entrar por tu nariz.", "Imagina que el aire es claro y limpio.", "Exhala lento, expulsando la confusión."] },
+                { title: 'Tierra Firme', subtitle: 'Anclaje visual', time: '2 min', steps: ["Busca a tu alrededor 3 objetos de color verde.", "Toca una textura suave cerca de ti.", "Escucha el sonido más lejano que puedas percibir."] },
+                { title: 'El Despeje', subtitle: 'Soltar el cuello', time: '3 min', steps: ["Lleva tu barbilla muy despacio hacia tu pecho.", "Siente cómo se estira la tensión de tu nuca.", "Respira hondo, suelta los hombros y regresa al centro."] },
+                { title: 'Pausa Caliente', subtitle: 'Té o café', time: '5 min', steps: ["Sostén una taza tibia. Siente su abrazo en tus manos.", "Acércala y respira su aroma profundamente.", "Siente cómo ese calor relaja tu pecho."] },
+                { title: 'Frente Fresca', subtitle: 'Contraste', time: '2 min', steps: ["Moja tus manos con agua fría del grifo.", "Apoya tus palmas húmedas y frescas sobre tu frente.", "Deja que el frío baje la 'temperatura' de tus pensamientos."] },
+                { title: 'Trazos Suaves', subtitle: 'Atención táctil', time: '3 min', steps: ["Abre la palma de tu mano izquierda.", "Con tu dedo índice derecho, traza líneas muy lentas en ella.", "Concéntrate solo en la sensación del roce."] },
+                { title: 'Palming', subtitle: 'Oscuridad', time: '3 min', steps: ["Frota tus palmas vigorosamente hasta generar calor.", "Haz una 'copa' con tus manos y cubre tus ojos cerrados.", "Descansa la vista en la oscuridad cálida."] },
+                { title: 'Cuenta Regresiva', subtitle: 'Foco puro', time: '2 min', steps: ["Inhala profundo.", "Exhala contando mentalmente 'Cinco'.", "Repite bajando el número hasta llegar a 'Uno'."] },
+                { title: 'Mirada Lejana', subtitle: 'Soltar visión', time: '4 min', steps: ["Acércate a una ventana.", "Busca el punto más lejano que puedas ver (nube, árbol).", "Mantén la vista ahí, dejando que la mente divague suelta."] },
+                { title: 'Masaje de Sienes', subtitle: 'Alivio físico', time: '3 min', steps: ["Pon tus dedos índice y medio en tus sienes.", "Haz círculos pequeñitos y suaves hacia atrás.", "Suelta la tensión de la mandíbula mientras masajeas."] },
+                { title: 'Suspiro de Hombros', subtitle: 'Carga fuera', time: '2 min', steps: ["Sube los hombros hacia tus orejas tomando aire.", "Sostén esa tensión dos segundos.", "Suelta el aire por la boca y deja caer los hombros de golpe."] },
+                { title: 'Sonido Presente', subtitle: 'Radar auditivo', time: '3 min', steps: ["Cierra los ojos y busca un sonido cercano (el reloj, la nevera).", "Ahora busca un sonido más lejano.", "Deja que tu cerebro solo procese esos sonidos."] },
+                { title: 'Parpadeo Lento', subtitle: 'Reset visual', time: '2 min', steps: ["Cierra los ojos apretando un poquito.", "Ábrelos muy despacio.", "Repite 5 veces. Es como limpiar el parabrisas de tu mente."] },
+                { title: 'Una Sola Cosa', subtitle: 'Micro orden', time: '3 min', steps: ["Mira tu escritorio o la mesa más cercana.", "Elige un solo objeto que esté fuera de lugar.", "Guárdalo despacio. Solo esa cosa. El orden externo calma."] },
+                { title: 'Pies al Suelo', subtitle: 'Anclaje base', time: '2 min', steps: ["Descálzate si puedes. Apoya los pies planos.", "Presiona ligeramente los dedos contra el piso.", "Siente cómo el suelo te sostiene sin esfuerzo."] },
+                { title: 'Estirar Dedos', subtitle: 'Soltar manos', time: '2 min', steps: ["Abre tus manos separando los dedos lo más posible.", "Siente la tensión en la palma.", "Relaja de golpe. Las manos tensas tensan la mente."] },
+                { title: 'Borrador Mental', subtitle: 'Visualización', time: '3 min', steps: ["Imagina tus pendientes escritos en una pizarra blanca.", "Imagina un borrador limpiando suavemente la pizarra.", "Disfruta de ese espacio en blanco por un minuto."] },
+                { title: 'Aroma Presente', subtitle: 'Foco olfativo', time: '2 min', steps: ["Busca algo cerca: crema, café, una fruta.", "Cierra los ojos e inhala profundamente su aroma.", "El olfato te trae directo al presente, sacándote del bucle."] },
+                { title: 'Lóbulos Libres', subtitle: 'Masaje orejas', time: '3 min', steps: ["Toma los lóbulos de tus orejas con pulgar e índice.", "Masajea suavemente haciendo círculos.", "Este punto de acupresión alivia el estrés físico rápido."] },
+                { title: 'Soltar Paladar', subtitle: 'Relajar boca', time: '2 min', steps: ["Date cuenta de dónde está tu lengua ahora mismo.", "Despégala del paladar y déjala caer suave.", "Al soltar la lengua, la agitación mental suele disminuir."] },
+                { title: 'Respiración Alterna', subtitle: 'Equilibrio', time: '4 min', steps: ["Tapa tu fosa nasal derecha. Inhala por la izquierda.", "Tapa la izquierda, exhala por la derecha.", "Regula tu respiración suavemente y sin prisa."] },
+                { title: 'Luz Cerrada', subtitle: 'Descanso de luz', time: '2 min', steps: ["Cierra los ojos sin apretar.", "Enfoca tu vista en el espacio oscuro frente a ti.", "Descansa tu cerebro del exceso de estímulos visuales."] },
+                { title: 'Fricción de Calor', subtitle: 'Atención a la cara', time: '3 min', steps: ["Frota tus manos rápido hasta que sientas calor.", "Pásalas suavemente por tu rostro y tu cuello.", "Ese calor ayuda a disipar la sensación de 'cabeza pesada'."] },
+                { title: 'Nuca Sostenida', subtitle: 'Apoyo', time: '3 min', steps: ["Entrelaza tus manos detrás de tu nuca.", "Deja caer el peso de tu cabeza hacia atrás, sobre tus manos.", "Tus manos sostienen tu cabeza para que tu cuello descanse."] }
+            ].map((r, i) => ({ ...r, id: `mn_${i}`, icon: M_ICONS[i % M_ICONS.length], color: M_COLORS[i % M_COLORS.length] })),
+
+            'recuperar_energia': [
+                { title: 'Baño de Sol', subtitle: 'Recarga natural', time: '4 min', steps: ["Acércate a una ventana o sal al exterior.", "Deja que la luz toque tu rostro. Cierra los ojos.", "Siente cómo el calor reconforta y te da vida."] },
+                { title: 'Despertar Articular', subtitle: 'Soltar rigidez', time: '3 min', steps: ["Haz círculos lentos con tus hombros hacia atrás.", "Ahora mueve tus muñecas y tus tobillos suavemente.", "Libera la rigidez acumulada de tu cuerpo."] },
+                { title: 'Respiración Vital', subtitle: 'Activación', time: '2 min', steps: ["Inhala profundo por la nariz llenando el pecho.", "Exhala fuerte por la boca como soplando una vela.", "Siente cómo la vitalidad vuelve a circular."] },
+                { title: 'El Bosque', subtitle: 'Visualización', time: '4 min', steps: ["Cierra los ojos e imagina un bosque verde frondoso.", "Imagina el olor a tierra mojada y a hojas limpias.", "Siente la firmeza de los árboles llenándote de paz y fuerza."] },
+                { title: 'Caricia de Agua', subtitle: 'Choque fresco', time: '1 min', steps: ["Abre el grifo con agua muy fría.", "Moja el interior de tus muñecas.", "Salpica tu rostro. El frío despierta tu sistema rápido."] },
+                { title: 'Estirón del Gato', subtitle: 'Cielo', time: '2 min', steps: ["Entrelaza los dedos y empuja tus manos hacia el techo.", "Estírate como si acabaras de despertar.", "Suelta los brazos de golpe con un suspiro."] },
+                { title: 'Caminata Inmóvil', subtitle: 'Circulación', time: '3 min', steps: ["De pie, levanta un talón y luego el otro sin avanzar.", "Hazlo a buen ritmo, balanceando los brazos.", "Bombea la sangre desde tus piernas hacia tu corazón."] },
+                { title: 'Postura de Reina', subtitle: 'Apertura', time: '2 min', steps: ["Ponte de pie. Abre el pecho, junta los omóplatos.", "Levanta ligeramente la barbilla.", "Mantén la postura; tu cuerpo le avisará a tu mente que estás lista."] },
+                { title: 'Sacudir el Polvo', subtitle: 'Manos vivas', time: '2 min', steps: ["Deja colgar tus brazos a los lados.", "Sacude tus manos vigorosamente como quitándote agua.", "Esa vibración despierta y aligera tus brazos."] },
+                { title: 'Mirada al Cielo', subtitle: 'Amplitud', time: '3 min', steps: ["Sal o mira por la ventana hacia arriba.", "Observa la inmensidad del cielo o las nubes.", "Mirar hacia arriba eleva naturalmente el estado de ánimo."] },
+                { title: 'Bostezo Provocado', subtitle: 'Oxígeno extra', time: '2 min', steps: ["Abre la boca muy grande y finge un bostezo.", "Hazlo 3 veces hasta que salga uno real.", "Un bostezo inunda el cerebro de oxígeno fresco y necesario."] },
+                { title: 'Palmas Arriba', subtitle: 'Recibir', time: '3 min', steps: ["Siéntate, pon las manos sobre tus muslos, palmas arriba.", "Abre el pecho.", "Respira imaginando que recibes fuerza renovada por tus manos."] },
+                { title: 'Tamborileo', subtitle: 'Cabeza', time: '2 min', steps: ["Con las yemas de tus dedos, da golpecitos suaves en tu cabeza.", "Como si cayeran gotas de lluvia desde la frente a la nuca.", "Estimula el cuero cabelludo y despeja la somnolencia."] },
+                { title: 'Tobillos Libres', subtitle: 'Pies', time: '3 min', steps: ["Siéntate y levanta un pie.", "Dibuja el abecedario en el aire con la punta de tu pie.", "Cambia de pie. Activa tu circulación baja de inmediato."] },
+                { title: 'Inhalación Doble', subtitle: 'Pico de atención', time: '2 min', steps: ["Inhala profundo por la nariz.", "Al final de la inhalación, haz otra mini-inhalación rápida.", "Exhala largo. Es un estímulo biológico de alerta natural."] },
+                { title: 'Luz de Pecho', subtitle: 'Visual', time: '3 min', steps: ["Pon tu mano en tu corazón.", "Imagina que hay una calidez brillante dentro de tu pecho.", "Con cada respiración, esa calidez te da confort y expansión."] },
+                { title: 'Puños Fuertes', subtitle: 'Contraste', time: '2 min', steps: ["Aprieta los puños con toda tu fuerza por 3 segundos.", "Suelta de golpe estirando los dedos.", "El contraste entre tensión y relajación despierta tu vitalidad."] },
+                { title: 'Lavado de Nuca', subtitle: 'Masaje', time: '3 min', steps: ["Lleva ambas manos a la parte trasera de tu cuello.", "Aprieta suavemente los músculos bajando hacia los hombros.", "Aumenta el flujo de sangre hacia tu cabeza de manera segura."] },
+                { title: 'Talón a Glúteo', subtitle: 'Piernas', time: '3 min', steps: ["De pie, apóyate en una silla.", "Lleva suavemente un talón hacia tu glúteo. Respira.", "Cambia. Despierta los músculos más grandes de tu cuerpo."] },
+                { title: 'Orejas Arriba', subtitle: 'Acupresión suave', time: '2 min', steps: ["Toma el borde superior de tus orejas.", "Tira muy suavemente hacia arriba y hacia atrás.", "Activa zonas que naturalmente reducen la fatiga."] },
+                { title: 'Círculos Libres', subtitle: 'Caderas', time: '3 min', steps: ["Ponte de pie, manos a la cintura.", "Haz círculos amplios, como con un hula-hoop lento.", "Siente cómo la tensión acumulada abandona tu centro."] },
+                { title: 'Colores Vivos', subtitle: 'Visual', time: '2 min', steps: ["Busca a tu alrededor el objeto con el color más intenso.", "Concéntrate solo en la intensidad de ese tono.", "Los colores vivos ayudan a tu cerebro a salir del letargo."] },
+                { title: 'Cejas Arriba', subtitle: 'Rostro', time: '2 min', steps: ["Levanta las cejas lo más que puedas, abriendo mucho los ojos.", "Sostén 2 segundos y relaja.", "Rompe la expresión de cansancio de tu rostro al instante."] },
+                { title: 'Ritmo en Manos', subtitle: 'Chasquidos', time: '2 min', steps: ["Con las dos manos, da palmaditas o chasquea los dedos rítmicamente.", "No pienses, solo sigue un ritmo alegre.", "El sonido y el movimiento conectan y despiertan tu mente."] },
+                { title: 'Abrazo Despertar', subtitle: 'Auto-abrazo', time: '3 min', steps: ["Cruza los brazos agarrando tus hombros opuestos.", "Apriétate un poco fuerte, sintiendo la firmeza de tu cuerpo.", "Respira y suelta. Estás lista y entera para continuar."] }
+            ].map((r, i) => ({ ...r, id: `re_${i}`, icon: M_ICONS[(i+1) % M_ICONS.length], color: E_COLORS[i % E_COLORS.length] })),
+
+            'mundo_acelerado': [
+                { title: 'Puerto Seguro', subtitle: 'Suspiro del Vientre', time: '4 min', steps: ["Pon tus manos sobre tu vientre.", "Inhala profundo... deja que tus manos se eleven.", "Exhala con un suspiro largo. Suelta todo el peso."] },
+                { title: 'Caja de Calma', subtitle: 'Respiración Pausa', time: '3 min', steps: ["Inhala contando hasta 4...", "Sostén el aire con suavidad por 4 segundos...", "Exhala todo contando hasta 4, y descansa 4 segundos."] },
+                { title: 'El Escudo', subtitle: 'Burbuja de paz', time: '2 min', steps: ["Imagina una burbuja de luz a tu alrededor.", "El ruido y las prisas chocan por fuera y resbalan.", "Dentro solo hay un silencio inmenso y protector."] },
+                { title: 'Raíces', subtitle: 'Firmeza', time: '3 min', steps: ["Siéntate bien apoyada o pisa firme el suelo.", "Imagina que de tus pies salen raíces hacia la tierra profunda.", "Siente el soporte firme sosteniéndote, sin que tengas que hacer esfuerzo."] },
+                { title: 'Océano Interno', subtitle: 'Pausa Auditiva', time: '2 min', steps: ["Cubre tus oídos con las palmas de tus manos.", "Escucha el sonido de tu propia respiración, como olas de mar.", "Quédate ahí, disfrutando de esta profunda quietud."] },
+                { title: 'Globo Desinflado', subtitle: 'Exhalación', time: '3 min', steps: ["Inhala normalmente.", "Exhala por la boca dejando que el aire salga muy, muy lento.", "Imagina que eres un globo que pierde aire despacito y se relaja."] },
+                { title: 'Pesar las Piernas', subtitle: 'Gravedad', time: '3 min', steps: ["Sentada, concéntrate en tus piernas.", "Siente cómo la gravedad tira de ellas hacia la silla.", "Deja que pesen más. No tienes que sostener su peso ahora mismo."] },
+                { title: 'Tacto Áspero/Suave', subtitle: 'Anclaje táctil', time: '2 min', steps: ["Busca la tela de tu ropa o la textura de una mesa.", "Pasa la yema de tus dedos lentamente.", "El tacto ancla la mente que viaja angustiada hacia el futuro."] },
+                { title: 'Parar el Reloj', subtitle: 'Ojos cerrados', time: '4 min', steps: ["Cierra los ojos.", "Imagina un reloj de manecillas que se detiene por completo.", "En este instante, la prisa no existe. Solo hay un gran espacio de paz."] },
+                { title: 'Alisar la Frente', subtitle: 'Masaje', time: '3 min', steps: ["Lleva tus dedos al centro de tu frente.", "Deslízalos hacia las sienes alisando la piel suavemente.", "Plancha físicamente la preocupación marcada en tu rostro."] },
+                { title: 'Soltar Rodillas', subtitle: 'Tensión baja', time: '2 min', steps: ["Nota cómo tienes las rodillas ahora mismo.", "Seguro están un poco tensas. Afloja las articulaciones intencionalmente.", "Al soltar las rodillas, la espalda baja también se rinde y descansa."] },
+                { title: 'Respiración de 6', subtitle: 'Lentitud', time: '4 min', steps: ["Inhala contando hasta 3.", "Exhala contando hasta 6, frenando la salida del aire muy lento.", "Alargar la exhalación le asegura a tu cuerpo que todo está en paz."] },
+                { title: 'Dejar las Cargas', subtitle: 'Visualización', time: '3 min', steps: ["Imagina que sostienes dos maletas muy pesadas en tus manos.", "Visualiza cómo abres las manos y las dejas caer al suelo.", "Siente el alivio profundo en tus hombros ahora vacíos y ligeros."] },
+                { title: 'Espalda a la Pared', subtitle: 'Soporte físico', time: '3 min', steps: ["Busca una pared y apoya toda tu espalda en ella.", "Siente que no tienes que mantenerte derecha por ti misma.", "Deja que la pared haga el trabajo de sostenerte por un momento."] },
+                { title: 'Cuello de Cisne', subtitle: 'Rendición', time: '2 min', steps: ["Deja caer la cabeza pesada hacia tu pecho.", "Siente el estiramiento en la nuca. Ríndete a la gravedad.", "Respira hondo. No tienes que estar siempre en estado de alerta."] },
+                { title: 'Trazar Labios', subtitle: 'Calma al tacto', time: '2 min', steps: ["Con un dedo, traza muy suavemente el contorno de tus labios.", "Es un gesto sutil que el cerebro asocia con arrullo y consuelo.", "Ayuda a disminuir inmediatamente la agitación interna."] },
+                { title: 'Apagar Pantallas', subtitle: 'Pausa real', time: '3 min', steps: ["Pon el celular boca abajo. Apaga el monitor si puedes.", "Mira una pared lisa, un cuadro, o cierra los ojos.", "Cero información nueva ingresando por 3 minutos enteros."] },
+                { title: 'El Refugio Manos', subtitle: 'Ahuecar', time: '3 min', steps: ["Junta las palmas ahuecadas como si sostuvieras algo delicado.", "Mira el hueco vacío entre tus manos.", "Ese espacio vacío es de paz. Es un refugio diminuto y solo tuyo."] },
+                { title: 'Observar Vientre', subtitle: 'Atención limpia', time: '4 min', steps: ["Mira tu propio abdomen, o pon tus manos sobre él.", "Observa cómo se mueve al respirar, sin intentar cambiarlo.", "Solo míralo con asombro. Eres un organismo vivo y tranquilo."] },
+                { title: 'Palabra "Pausa"', subtitle: 'Enfoque', time: '2 min', steps: ["Inhala profundo y tranquilo.", "Al exhalar di mentalmente la palabra: 'Pausa'.", "Permítete detenerte por completo sin sentir ninguna culpa."] },
+                { title: 'Bajar la Mirada', subtitle: 'Descanso visual', time: '2 min', steps: ["Baja la mirada hacia el suelo o tu regazo, sin mirar nada en particular.", "Mantén los ojos entrecerrados y suaves.", "Bajar la vista desconecta el modo de alerta y urgencia visual."] },
+                { title: 'Soplar la Vela', subtitle: 'Foco suave', time: '3 min', steps: ["Imagina una pequeña vela encendida cerca de tu rostro.", "Sopla tan suavemente que la llama baile pero no se apague.", "Controlar el hilo de aire controla tu agitación de inmediato."] },
+                { title: 'Corazón y Vientre', subtitle: 'Conexión plena', time: '3 min', steps: ["Pon una mano en tu pecho y otra en tu abdomen.", "Siente el latido arriba y la respiración pausada abajo.", "Estás completa, estás entera, y estás segura aquí."] },
+                { title: 'Sentir la Silla', subtitle: 'Tacto base', time: '2 min', steps: ["Enfócate en la sensación de la silla sosteniendo tu peso.", "Siente la firmeza del asiento debajo de ti.", "No tienes que sostenerte en el aire, estás firmemente apoyada."] },
+                { title: 'Cerrar la Puerta', subtitle: 'Visual', time: '3 min', steps: ["Imagina una puerta pesada y hermosa de madera frente a ti.", "Imagina que la cierras, dejando el ruido del mundo del otro lado.", "Respira. Estás a salvo en esta habitación interior de silencio."] }
+            ].map((r, i) => ({ ...r, id: `ma_${i}`, icon: M_ICONS[(i+2) % M_ICONS.length], color: A_COLORS[i % A_COLORS.length] })),
+
+            'corazon_pausa': [
+                { title: 'Mi Cita de Paz', subtitle: 'Cuidado interior', time: '5 min', steps: ["Toma crema y masajea suavemente tus manos.", "Siente la suavidad. Estas manos sostienen mucho y cuidan de muchos.", "Reconoce internamente algo valiente o amable que hiciste hoy."] },
+                { title: 'Tesoros', subtitle: 'Gratitud íntima', time: '3 min', steps: ["Piensa en algo pequeñito que te dio consuelo u alegría hoy.", "Quizás el olor al café, una brisa fresca, una cobija limpia.", "Siente esa dulce gratitud llenando tu pecho de calor."] },
+                { title: 'El Autoabrazo', subtitle: 'Contención', time: '2 min', steps: ["Cruza tus brazos sobre tu pecho, dándote un abrazo real y firme.", "Acaricia suavemente tus hombros.", "Dite en silencio: 'Hago lo mejor que puedo, y eso es suficiente'."] },
+                { title: 'El Espejo', subtitle: 'Palabras de verdad', time: '2 min', steps: ["Visualiza tu rostro. Mírate con infinita compasión y gracia.", "Respira hondo y reconoce a la mujer valiente que ves.", "Di internamente: 'Soy valiosa, soy sabia, soy profundamente amada'."] },
+                { title: 'El Saboreo', subtitle: 'Mimo Sensorial', time: '4 min', steps: ["Busca un trozo de algo rico o tu bebida tibia favorita.", "Huélelo antes de probarlo. Disfruta su aroma con los ojos cerrados.", "Saborea despacio, regalándote este pequeño momento de bondad."] },
+                { title: 'Caricia de Hombros', subtitle: 'Alivio', time: '3 min', steps: ["Toca tu hombro derecho con la mano izquierda suavemente.", "Da un pequeño apretón reconfortante y cálido.", "Es el gesto de apoyo que a veces esperamos de otros. Dátelo a ti misma."] },
+                { title: 'Reconocimiento', subtitle: '1 Logro', time: '2 min', steps: ["Piensa en una sola cosa difícil que superaste o enfrentaste esta semana.", "No la minimices. Fue difícil y lo lograste atravesar.", "Siente el sano orgullo y la gratitud en tu pecho."] },
+                { title: 'Perdonar el Día', subtitle: 'Soltar exigencias', time: '3 min', steps: ["Si hoy sentiste que 'no rendiste' como querías, respira hondo.", "Dite: 'Me perdono por no ser incansable. Soy humana'.", "Mañana es un día completamente nuevo e intacto para volver a empezar."] },
+                { title: 'Mano Amable', subtitle: 'Ternura', time: '3 min', steps: ["Lleva la palma de tu mano a tu mejilla con mucha suavidad.", "Sostén tu propio rostro con ternura absoluta y compasión.", "Siéntete cuidada, comprendida y protegida en este instante."] },
+                { title: 'La Niña Interna', subtitle: 'Recordatorio', time: '4 min', steps: ["Imagina a la niña que fuiste a los 7 u 8 años.", "Mírala sonreír. Su esencia y su valor viven intactos dentro de ti.", "Prométele que vas a cuidarla con mucha paciencia y suavidad hoy."] },
+                { title: 'Escribir la Verdad', subtitle: 'Papel', time: '3 min', steps: ["Toma un papel y un bolígrafo cerca de ti.", "Escribe grande: 'Mi descanso es necesario y mi paz es valiosa'.", "Léelo dos veces despacio. Es una verdad absoluta ahora mismo."] },
+                { title: 'Calor en el Pecho', subtitle: 'Consuelo', time: '2 min', steps: ["Frota tus manos hasta calentarlas y ponlas en el centro de tu pecho.", "Siente cómo el calor traspasa la ropa y la piel.", "Deja que ese calor derrita cualquier sensación de soledad o tristeza."] },
+                { title: 'Memoria Hermosa', subtitle: 'Recordar', time: '3 min', steps: ["Recuerda un momento hermoso o unas palabras amables que alguien te dedicó.", "Escucha esa voz en tu memoria, recordando el cariño.", "Acepta esas palabras. Son reales y te pertenecen."] },
+                { title: 'Foto Feliz', subtitle: 'Ancla visual', time: '4 min', steps: ["Busca en tu mente (o en tu celular) una foto tuya donde estabas en paz.", "Mírate tranquila y radiante. Esa eres tú de verdad.", "Esa esencia no se ha ido, solo está descansando bajo el cansancio de hoy."] },
+                { title: 'Melodía Interna', subtitle: 'Consuelo', time: '3 min', steps: ["Tararea mentalmente una melodía suave que te guste o te traiga paz.", "Deja que esa música suave te envuelva como una manta.", "Eres valiosa y mereces espacios que suenen a esperanza."] },
+                { title: 'Permiso de Cansancio', subtitle: 'Validar dolor', time: '2 min', steps: ["Di en voz alta (o mentalmente): 'La verdad es que estoy muy cansada'.", "No luches contra ello. Valida tu cansancio sin justificarte.", "Aceptar que no puedes con todo hoy, es el primer paso para sanar."] },
+                { title: 'El Abrazo Protector', subtitle: 'Refugio', time: '3 min', steps: ["Imagina que te envuelve un manto suave de luz y paz.", "Cualquier crítica, autoexigencia o ruido exterior rebota en él.", "Estás blindada y segura bajo tu propio cuidado."] },
+                { title: 'Recordatorio Físico', subtitle: 'Ancla', time: '2 min', steps: ["Toca un anillo, collar, pulsera o el borde de tu manga.", "Sostenlo entre tus dedos con suavidad y firmeza.", "Úsalo como un recordatorio: 'Mientras toque esto, estoy segura y en paz'."] },
+                { title: 'Sonrisa Suave', subtitle: 'Alivio físico', time: '2 min', steps: ["Esboza una media sonrisa, muy sutil y relajada.", "Sosténla por un minuto mientras respiras profundo.", "Este pequeño gesto le envía a tu cuerpo una señal inmediata de seguridad."] },
+                { title: 'Reflexión del Día', subtitle: 'Enfoque', time: '2 min', steps: ["Inhala despacio llenando tus pulmones.", "Exhala y piensa: 'Hoy di lo mejor que tenía para dar'.", "Incluso si fue el 10% de lo habitual, fue tu 100% de hoy. Y está bien."] },
+                { title: 'Agradecer el Camino', subtitle: 'Consciencia', time: '3 min', steps: ["Mira o piensa en tus pies un momento.", "Te han sostenido y te han llevado a todas partes hoy, fielmente.", "Agradece a tu cuerpo por sostenerte, aún cuando estás cansada."] },
+                { title: 'Exhalar la Exigencia', subtitle: 'Soplar', time: '3 min', steps: ["Inhala profundamente, recogiendo la presión y la exigencia del día.", "Imagina que esa exigencia es un polvo gris en tu interior.", "Sopla suavemente por la boca, imaginando cómo se aleja de ti."] },
+                { title: 'Manos Entrelazadas', subtitle: 'Sostén', time: '2 min', steps: ["Entrelaza suavemente los dedos de ambas manos y apóyalas en tu regazo.", "Siente cómo una mano acompaña y sostiene a la otra con firmeza.", "Es un recordatorio físico de que te tienes a ti misma para cuidarte."] },
+                { title: 'Mirada Compasiva', subtitle: 'Perspectiva', time: '3 min', steps: ["Piensa en qué le dirías a tu mejor amiga si se sintiera tan cansada como tú.", "Seguro le dirías que descanse y que es una mujer maravillosa.", "Ahora, háblate a ti misma exactamente con ese mismo nivel de amor y gracia."] },
+                { title: 'Promesa de Cuidado', subtitle: 'Esperanza', time: '2 min', steps: ["Pon la mano sobre tu corazón, sintiendo su ritmo constante.", "Prométete una pequeña cosa amable que harás por ti mañana temprano.", "Mantén esa promesa. Es un hermoso pacto de amor propio."] }
+            ].map((r, i) => ({ ...r, id: `cp_${i}`, icon: M_ICONS[(i+3) % M_ICONS.length], color: C_COLORS[i % C_COLORS.length] }))
+        };
+
+        // ==========================================
+        // COMPONENTES UI BASE
+        // ==========================================
         const Card = ({ children, className = "" }) => (
             <div className={`w-full max-w-md mx-auto bg-crema min-h-[600px] rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col relative ${className}`}>
                 {children}
@@ -175,37 +599,41 @@
             </button>
         );
 
-        // --- VISTAS ---
-
+        // ==========================================
+        // VISTAS DEL FLUJO
+        // ==========================================
         const OnboardingView = ({ onComplete }) => {
             const [name, setName] = useState('');
             const handleSubmit = (e) => { e.preventDefault(); if(name.trim()) onComplete(name.trim()); };
             return (
-                <div className="flex-1 flex flex-col justify-center items-center text-center p-8 animate-slide-up">
+                <div className="flex-1 flex flex-col justify-center items-center text-center p-8 animate-fade-in-slow">
                     <div className="w-16 h-16 bg-musgo/10 text-musgo rounded-full flex items-center justify-center mb-8 shadow-sm"><Sparkles size={28} strokeWidth={1.5} /></div>
                     <h1 className="font-serif text-3xl text-slate-800 mb-4 leading-tight">Bienvenida a casa,<br/>mujer valiosa.</h1>
-                    <p className="font-sans text-slate-500 mb-10 leading-relaxed">Aquí no hay tareas ni exigencias, solo pequeños respiros para recuperar tu brillo.</p>
+                    <p className="font-sans text-slate-500 mb-10 leading-relaxed text-lg">Aquí no hay tareas ni exigencias,<br/>solo un espacio seguro para ti.</p>
                     <form onSubmit={handleSubmit} className="w-full">
-                        <div className="text-left mb-2 ml-2"><label className="text-sm font-medium text-slate-500">¿Cómo te llamas?</label></div>
-                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:border-musgo focus:ring-1 focus:ring-musgo outline-none transition-all font-sans text-slate-800 shadow-sm mb-6" placeholder="Tu nombre..." autoComplete="off" />
+                        <div className="text-left mb-2 ml-2"><label className="text-sm font-medium text-slate-400">¿Cómo te gusta que te llamen?</label></div>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:border-musgo focus:ring-1 focus:ring-musgo outline-none transition-all font-sans text-slate-800 shadow-sm mb-6 placeholder:text-slate-300" placeholder="Escribe tu nombre aquí..." autoComplete="off" />
                         <Button onClick={handleSubmit} icon={ArrowRight}>Entrar a mi jardín</Button>
                     </form>
                 </div>
             );
         };
 
-        const HomeView = ({ userName, victories, onSelectEmotion }) => (
-            <div className="flex-1 flex flex-col animate-fade-in">
-                <div className="pt-10 px-8 pb-6">
-                    <div className="flex justify-between items-start mb-2">
+        const HomeView = ({ userName, victories, onSelectEmotion, onOpenProfile }) => (
+            <div className="flex-1 flex flex-col animate-fade-in relative">
+                <button onClick={onOpenProfile} className="absolute top-8 right-6 w-10 h-10 bg-white/50 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-musgo hover:bg-white transition-all shadow-sm">
+                    <User size={18} />
+                </button>
+                <div className="pt-10 px-8 pb-6 animate-fade-in-slow">
+                    <div className="flex flex-col items-start mb-2 pr-12">
                         <h1 className="font-serif text-3xl text-slate-800 tracking-tight">Hola, {userName} 🌷</h1>
                         {victories > 0 && (
-                            <div className="flex items-center gap-1.5 bg-[#F9F6E8] text-[#9A7D1C] px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border border-[#EADDAC]">
-                                <Sparkles size={12} /><span>{victories} Victorias</span>
+                            <div className="flex items-center gap-1.5 bg-[#F9F6E8] text-[#9A7D1C] px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border border-[#EADDAC] mt-3">
+                                <Sparkles size={12} /><span>{victories} momentos de cuidado</span>
                             </div>
                         )}
                     </div>
-                    <p className="font-sans text-slate-500 text-lg">Un paso a la vez.</p>
+                    <p className="font-sans text-slate-500 text-lg mt-2">Este es tu espacio de paz.<br/>Tómate el tiempo que necesites.</p>
                 </div>
                 <div className="px-8 pb-8 flex-1 flex flex-col">
                     <h2 className="font-sans text-xs uppercase tracking-widest text-slate-400 mb-5 font-semibold">¿Cómo te sientes en este segundo?</h2>
@@ -224,10 +652,40 @@
             </div>
         );
 
+        const ProfileModal = ({ currentName, onClose, onSave, onReset }) => {
+            const [editName, setEditName] = useState(currentName);
+            const [confirmReset, setConfirmReset] = useState(false);
+            return (
+                <div className="absolute inset-0 bg-crema/95 backdrop-blur-sm z-50 flex flex-col justify-center px-8 animate-fade-in">
+                    <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700"><X size={20} /></button>
+                        <h3 className="font-serif text-xl text-slate-800 mb-6 text-center">Tu rincón personal</h3>
+                        <div className="mb-6">
+                            <label className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2 block">Cómo te llamamos</label>
+                            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-musgo font-sans text-slate-800" />
+                            <button onClick={() => onSave(editName)} className="w-full mt-3 bg-slate-800 text-white py-3 rounded-xl font-medium text-sm">Guardar con cariño</button>
+                        </div>
+                        <div className="border-t border-slate-100 pt-6">
+                            {!confirmReset ? (
+                                <button onClick={() => setConfirmReset(true)} className="w-full text-slate-400 text-sm py-2 hover:text-red-400 transition-colors">Comenzar un nuevo ciclo (reiniciar mi jardín)</button>
+                            ) : (
+                                <div className="text-center animate-slide-up">
+                                    <p className="text-sm text-slate-500 mb-3">¿Segura? Se borrará la memoria inteligente de los refugios para empezar en blanco.</p>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setConfirmReset(false)} className="flex-1 bg-slate-100 text-slate-600 py-2 rounded-lg text-sm">Mejor no</button>
+                                        <button onClick={onReset} className="flex-1 bg-red-50 text-red-500 py-2 rounded-lg text-sm font-medium">Sí, volver a empezar</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const ValidationView = ({ emotion, activeRefuge, onBack, onContinue }) => {
             const Icon = emotion?.icon || Brain;
             const RefugeIcon = activeRefuge?.icon || Sparkles;
-
             return (
                 <div className={`flex-1 flex flex-col ${emotion?.color || 'bg-white'} animate-fade-in`}>
                     <div className="p-6">
@@ -239,7 +697,7 @@
                         </div>
                         <h2 className="font-serif text-2xl text-slate-800 mb-8 leading-snug">{emotion?.validation}</h2>
                         <div className="w-full mt-auto">
-                            <div className="text-left mb-3"><p className="font-sans text-[11px] text-slate-500 uppercase tracking-widest font-bold">Tu Refugio Seleccionado</p></div>
+                            <div className="text-left mb-3"><p className="font-sans text-[11px] text-slate-500 uppercase tracking-widest font-bold">Lo que tu cuerpo pide hoy</p></div>
                             <div className="bg-white/70 backdrop-blur-md p-5 rounded-2xl border border-white mb-6 flex items-center gap-4 text-left shadow-sm">
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeRefuge?.color || 'bg-slate-200'} text-white shadow-inner`}>
                                     <RefugeIcon size={20} strokeWidth={2} />
@@ -249,8 +707,28 @@
                                     <p className="font-sans text-slate-500 text-sm">{activeRefuge?.subtitle} • {activeRefuge?.time}</p>
                                 </div>
                             </div>
-                            <Button onClick={onContinue} className="bg-slate-800 hover:bg-slate-900 shadow-xl">Iniciar mi Refugio</Button>
+                            <Button onClick={onContinue} className="bg-slate-800 hover:bg-slate-900 shadow-xl">Caminar hacia mi refugio</Button>
                         </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PreparationView = ({ onReady }) => {
+            const [welcomeMsg, setWelcomeMsg] = useState("");
+            useEffect(() => {
+                const idx = ContentEngine.getNext('prep', PREPARATION_MESSAGES.length);
+                setWelcomeMsg(PREPARATION_MESSAGES[idx]);
+            }, []);
+            return (
+                <div className="flex-1 flex flex-col bg-[#F9F8F6] justify-center items-center px-8 text-center animate-fade-in relative overflow-hidden">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-white rounded-full blur-3xl opacity-50"></div>
+                    <div className="z-10 animate-fade-in-slow">
+                        <div className="w-16 h-16 rounded-full bg-musgo/10 text-musgo flex items-center justify-center mx-auto mb-8 animate-pulse-slow">
+                            <Wind size={24} />
+                        </div>
+                        <h2 className="font-serif text-2xl text-slate-700 mb-12 leading-relaxed">{welcomeMsg}</h2>
+                        <Button onClick={onReady} className="w-auto px-10 shadow-lg">Respira profundo y entra</Button>
                     </div>
                 </div>
             );
@@ -259,15 +737,16 @@
         const RefugeView = ({ activeRefuge, onComplete }) => {
             const [step, setStep] = useState(0);
             const [isPulsing, setIsPulsing] = useState(true);
+            const [isTextVisible, setIsTextVisible] = useState(true);
             const steps = activeRefuge?.steps || [];
             const RefugeIcon = activeRefuge?.icon || Sparkles;
 
             useEffect(() => {
                 if (step >= steps.length || steps.length === 0) return;
                 const timer = setTimeout(() => {
-                    setIsPulsing(false);
-                    setTimeout(() => { setStep(s => s + 1); setIsPulsing(true); }, 500);
-                }, 6000); // 6s per step
+                    setIsTextVisible(false); setIsPulsing(false); 
+                    setTimeout(() => { setStep(s => s + 1); setIsTextVisible(true); setIsPulsing(true); }, 1200); 
+                }, 8000); 
                 return () => clearTimeout(timer);
             }, [step, steps.length]);
 
@@ -286,69 +765,179 @@
                                 <RefugeIcon size={28} strokeWidth={1.5} className={isPulsing ? 'animate-pulse-slow' : ''} />
                             </div>
                         </div>
-                        <div className="h-28 flex items-center justify-center w-full">
+                        <div className="h-32 flex items-center justify-center w-full">
                             {step < steps.length ? (
-                                <h2 key={step} className="font-serif text-2xl text-slate-700 leading-snug animate-fade-in">{steps[step]}</h2>
+                                <h2 key={step} className={`font-serif text-2xl text-slate-700 leading-snug step-transition ${isTextVisible ? 'opacity-100' : 'opacity-0'}`}>{steps[step]}</h2>
                             ) : (
-                                <h2 className="font-serif text-2xl text-musgo leading-snug animate-fade-in">{activeRefuge?.finalMessage || 'Completado.'}</h2>
+                                <h2 className="font-serif text-2xl text-musgo leading-snug animate-fade-in-slow">Has regresado a tu centro.</h2>
                             )}
                         </div>
                     </div>
                     <div className="p-6">
-                        <Button onClick={onComplete} primary={false} className={step < steps.length ? 'opacity-0 pointer-events-none' : 'animate-slide-up'}>Completar y Guardar Victoria</Button>
+                        <Button onClick={onComplete} primary={false} className={step < steps.length ? 'opacity-0 pointer-events-none' : 'animate-slide-up'}>Terminar este momento</Button>
                     </div>
                 </div>
             );
         };
 
-        const VictoryView = ({ activeRefuge, onHome }) => {
-            const [showDetails, setShowDetails] = useState(false);
-            const today = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+        const ClosureView = ({ onContinue }) => {
+            const [selected, setSelected] = useState(null);
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+            
+            useEffect(() => {
+                if (!selected) return;
+                const idx = ContentEngine.getNext(`fb_${selected}`, FEEDBACK_MESSAGES[selected].length);
+                setFeedbackMsg(FEEDBACK_MESSAGES[selected][idx]);
+            }, [selected]);
+
+            return (
+                <div className="flex-1 flex flex-col bg-crema px-8 pt-16 pb-8 animate-fade-in">
+                    <div className="flex-1 flex flex-col">
+                        <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-400 flex items-center justify-center mb-6 shadow-sm"><Heart size={28} fill="currentColor" /></div>
+                        <h2 className="font-serif text-3xl text-slate-800 mb-2">Gracias por quedarte contigo estos minutos.</h2>
+                        <p className="font-sans text-slate-500 text-lg mb-10">Con toda honestidad, ¿cómo te sientes ahora?</p>
+
+                        {!selected ? (
+                            <div className="flex flex-col gap-3 animate-slide-up">
+                                <button onClick={() => setSelected('mejor')} className="w-full text-left px-6 py-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-musgo hover:bg-musgo/5 transition-all text-slate-700 font-medium text-lg">Siento mucha más paz 🌿</button>
+                                <button onClick={() => setSelected('un_poco')} className="w-full text-left px-6 py-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-musgo hover:bg-musgo/5 transition-all text-slate-700 font-medium text-lg">Siento un poco de ligereza 🌸</button>
+                                <button onClick={() => setSelected('igual')} className="w-full text-left px-6 py-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-musgo hover:bg-musgo/5 transition-all text-slate-700 font-medium text-lg">Aún me pesa, pero estoy aquí 💛</button>
+                            </div>
+                        ) : (
+                            <div className="animate-fade-in mt-4">
+                                <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm mb-8"><p className="font-serif text-xl text-slate-700 leading-snug">{feedbackMsg}</p></div>
+                                <Button onClick={onContinue}>Ir al Jardín</Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const GiftView = ({ onContinue, totalVictories }) => {
+            const [viewState, setViewState] = useState('check_milestone'); 
+            const [selectedGift, setSelectedGift] = useState(null);
+            
+            const MILESTONES = [10, 25, 50, 100];
+            const upcomingVictoryCount = totalVictories + 1;
 
             useEffect(() => {
-                const timerDetails = setTimeout(() => setShowDetails(true), 1000);
-                // Retorno Automático al Home después de 5 segundos
-                const timerAutoHome = setTimeout(() => onHome(), 5500); 
-                return () => { clearTimeout(timerDetails); clearTimeout(timerAutoHome); };
-            }, [onHome]);
+                if (MILESTONES.includes(upcomingVictoryCount)) {
+                    setViewState('milestone_celebration');
+                } else {
+                    setViewState('select_category');
+                }
+            }, [upcomingVictoryCount]);
+
+            const handleCategorySelect = (categoryId) => {
+                const collection = GARDEN_GIFTS_DB[categoryId];
+                const idx = ContentEngine.getNext(`gift_${categoryId}`, collection.length);
+                const randomGift = collection[idx];
+                
+                const catData = GARDEN_CATEGORIES.find(c => c.id === categoryId);
+                setSelectedGift({...randomGift, categoryTitle: catData.title, categoryIcon: catData.icon, categoryColor: catData.color});
+                setViewState('show_gift');
+            };
+
+            const MilestoneCard = () => {
+                const msgs = {
+                    10: "Has elegido cuidarte diez veces. Diez pausas. Diez actos de amor propio. Gracias por volver a tu centro.",
+                    25: "Veinticinco momentos de autocuidado. Estás construyendo un refugio hermoso dentro de ti. Qué orgullo inmenso.",
+                    50: "Cincuenta veces. Esto ya no es un intento, es tu nueva forma de tratarte a ti misma. Eres tu propio espacio de paz.",
+                    100: "Cien victorias. Cien veces que elegiste la paz sobre la prisa. Eres pura inspiración y gracia."
+                };
+                return (
+                    <div className="z-10 animate-slide-up flex flex-col flex-1 justify-center w-full mt-4">
+                        <div className="flex justify-center mb-6">
+                            <div className="w-20 h-20 bg-oro/10 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.3)] flex items-center justify-center text-oro border border-oro/20"><Sparkles size={36} /></div>
+                        </div>
+                        <h2 className="font-serif text-center text-2xl text-slate-800 mb-2">Hoy el Jardín celebra contigo</h2>
+                        <div className="bg-white p-8 rounded-3xl shadow-lg border border-oro/20 mt-6 relative text-center">
+                            <h3 className="font-serif text-4xl text-oro mb-4">{upcomingVictoryCount}</h3>
+                            <p className="font-sans text-slate-600 leading-relaxed text-xl italic">"{msgs[upcomingVictoryCount]}"</p>
+                        </div>
+                        <div className="mt-10 w-full">
+                            <Button onClick={onContinue} className="bg-slate-800 hover:bg-slate-900 shadow-xl">Guardar esta victoria especial</Button>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="flex-1 flex flex-col bg-[#F2F5F0] px-6 py-8 animate-fade-in relative overflow-y-auto no-scrollbar">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-100/40 via-transparent to-transparent pointer-events-none fixed"></div>
+                    
+                    {viewState === 'milestone_celebration' && <MilestoneCard />}
+
+                    {viewState === 'select_category' && (
+                        <div className="z-10 animate-slide-up pb-8">
+                            <h2 className="font-serif text-center text-2xl text-slate-700 mb-2 mt-2">El Jardín</h2>
+                            <p className="font-sans text-center text-slate-500 mb-6">¿Con qué deseas nutrirte hoy?</p>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                {GARDEN_CATEGORIES.map(cat => {
+                                    const Icon = cat.icon;
+                                    return (
+                                        <button key={cat.id} onClick={() => handleCategorySelect(cat.id)} className={`flex flex-col items-center justify-center p-4 rounded-2xl bg-white border ${cat.border} shadow-sm hover:shadow-md transition-all active:scale-95`}>
+                                            <div className={`w-10 h-10 rounded-full ${cat.bg} ${cat.color} flex items-center justify-center mb-2`}><Icon size={20} /></div>
+                                            <span className="font-sans font-medium text-[12px] text-slate-700 text-center leading-tight">{cat.title}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {viewState === 'show_gift' && selectedGift && (
+                        <div className="z-10 animate-fade-in flex flex-col flex-1 justify-center w-full">
+                            <h2 className="font-serif text-center text-xl text-slate-600 mb-6">🌿 El jardín ha guardado esto para ti...</h2>
+                            <div className="bg-white p-8 rounded-3xl shadow-lg border border-emerald-50 mb-10 relative">
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full whitespace-nowrap">{selectedGift.categoryTitle}</div>
+                                <div className="flex flex-col items-center text-center mt-2">
+                                    {React.createElement(selectedGift.categoryIcon, { size: 28, className: `${selectedGift.categoryColor} mb-4 opacity-70` })}
+                                    <h3 className="font-serif text-2xl text-slate-800 mb-4">{selectedGift.title}</h3>
+                                    <p className="font-sans text-slate-600 leading-relaxed text-lg">{selectedGift.text}</p>
+                                </div>
+                            </div>
+                            <Button onClick={onContinue} className="bg-emerald-700 hover:bg-emerald-800 shadow-emerald-700/20 shadow-xl">Guardar mi victoria y salir</Button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const VictoryView = ({ onHome }) => {
+            const [showDetails, setShowDetails] = useState(false);
+            const [farewellMsg, setFarewellMsg] = useState("");
+
+            useEffect(() => {
+                const idx = ContentEngine.getNext('farewell', FAREWELL_MESSAGES.length);
+                setFarewellMsg(FAREWELL_MESSAGES[idx]);
+                
+                const timerDetails = setTimeout(() => setShowDetails(true), 1500);
+                return () => { clearTimeout(timerDetails); };
+            }, []);
 
             return (
                 <div className="flex-1 flex flex-col bg-crema relative overflow-hidden animate-fade-in">
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-100/40 via-transparent to-transparent pointer-events-none"></div>
                     <div className="flex-1 flex flex-col justify-center px-8 z-10">
                         <div className="text-center animate-slide-up">
-                            <div className="w-20 h-20 mx-auto bg-white border border-yellow-100 text-oro rounded-full flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(212,175,55,0.25)]">
-                                <Check size={36} strokeWidth={2} />
-                            </div>
-                            <h2 className="font-serif text-3xl text-slate-800 mb-2">Victoria Guardada.</h2>
-                            <p className="font-sans text-slate-500">{activeRefuge?.victoryText}</p>
-                        </div>
-                        <div className={`mt-10 bg-white p-6 rounded-[1.5rem] shadow-sm border border-slate-100 fade-transition ${showDetails ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between pb-4 border-b border-slate-50">
-                                    <div className="flex items-center gap-3 text-slate-500"><Clock size={18} strokeWidth={1.5} /><span className="font-sans text-sm">Inversión en ti</span></div>
-                                    <span className="font-sans font-medium text-slate-800">{activeRefuge?.time || "Completado"}</span>
-                                </div>
-                                <div className="flex items-center justify-between pb-4 border-b border-slate-50">
-                                    <div className="flex items-center gap-3 text-slate-500"><MapPin size={18} strokeWidth={1.5} /><span className="font-sans text-sm">Refugio Utilizado</span></div>
-                                    <span className="font-serif italic text-slate-800 truncate ml-4 text-right max-w-[150px]">{activeRefuge?.title || "Refugio de Calma"}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3 text-slate-500"><Calendar size={18} strokeWidth={1.5} /><span className="font-sans text-sm">Fecha</span></div>
-                                    <span className="font-sans text-sm text-slate-800">{today}</span>
-                                </div>
-                            </div>
+                            <div className="w-20 h-20 mx-auto bg-white border border-yellow-100 text-oro rounded-full flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(212,175,55,0.25)]"><Check size={36} strokeWidth={2} /></div>
+                            <h2 className="font-serif text-3xl text-slate-800 mb-4">Victoria Guardada.</h2>
+                            <p className="font-serif text-slate-600 text-xl italic px-4 leading-relaxed">"{farewellMsg}"</p>
                         </div>
                     </div>
                     <div className={`p-6 fade-transition flex flex-col items-center gap-3 ${showDetails ? 'opacity-100' : 'opacity-0'}`}>
-                        <Button onClick={onHome}>Volver al inicio ahora</Button>
-                        <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Retornando automáticamente...</span>
+                        <Button onClick={onHome}>Volver a mi jardín</Button>
                     </div>
                 </div>
             );
         };
 
-        // --- MOTOR PRINCIPAL (CONTROLADOR Y LÓGICA DE ALMACENAMIENTO) ---
+        // ==========================================
+        // MOTOR PRINCIPAL
+        // ==========================================
         function App() {
             const [view, setView] = useState('loading');
             const [userName, setUserName] = useState('');
@@ -357,18 +946,14 @@
             const [selectedEmotion, setSelectedEmotion] = useState(null);
             const [activeRefuge, setActiveRefuge] = useState(null);
             
-            // Estado para el historial y anti-repetición
-            const [usedRefuges, setUsedRefuges] = useState({ mente_nublada: [], recuperar_energia: [], mundo_acelerado: [], corazon_pausa: [] });
             const [isTransitioning, setIsTransitioning] = useState(false);
+            const [showProfile, setShowProfile] = useState(false);
 
             useEffect(() => {
-                // Cargar datos persistentes
                 const savedName = localStorage.getItem('bienestar40_name');
                 const savedVictories = localStorage.getItem('bienestar40_victories');
-                const savedUsedRefuges = localStorage.getItem('bienestar40_used_refuges');
                 
                 if (savedVictories) setVictories(parseInt(savedVictories));
-                if (savedUsedRefuges) setUsedRefuges(JSON.parse(savedUsedRefuges));
                 
                 setTimeout(() => {
                     if (savedName) { setUserName(savedName); setView('home'); } 
@@ -378,74 +963,64 @@
 
             const navigateTo = (newView) => {
                 setIsTransitioning(true);
-                setTimeout(() => { setView(newView); setIsTransitioning(false); }, 300);
+                setTimeout(() => { setView(newView); setIsTransitioning(false); }, 500); 
             };
 
-            const handleCompleteOnboarding = (name) => {
-                localStorage.setItem('bienestar40_name', name);
-                setUserName(name);
-                navigateTo('home');
-            };
-
-            // LÓGICA DEL MOTOR DE REFUGIOS
             const handleSelectEmotion = (emotionId) => {
                 const emotion = EMOTION_CATEGORIES[emotionId];
-                const allCategoryRefuges = REFUGE_LIBRARY[emotionId];
+                const collection = REFUGE_LIBRARY[emotionId];
                 
-                // Filtrar refugios no utilizados
-                let availableRefuges = allCategoryRefuges.filter(r => !usedRefuges[emotionId].includes(r.id));
+                const idx = ContentEngine.getNext(`refuge_${emotionId}`, collection.length);
+                const chosenRefuge = collection[idx];
                 
-                // Si ya hizo los 20, resetear la memoria de esta categoría (¡Bucle infinito de bienestar!)
-                if (availableRefuges.length === 0) {
-                    availableRefuges = allCategoryRefuges;
-                    const newUsedState = { ...usedRefuges, [emotionId]: [] };
-                    setUsedRefuges(newUsedState);
-                    localStorage.setItem('bienestar40_used_refuges', JSON.stringify(newUsedState));
-                }
-
-                // Selección aleatoria inteligente
-                const randomIndex = Math.floor(Math.random() * availableRefuges.length);
-                const chosenRefuge = availableRefuges[randomIndex];
-
                 setSelectedEmotion(emotion);
                 setActiveRefuge(chosenRefuge);
                 navigateTo('validation');
             };
 
-            const handleCompleteRefuge = () => {
+            const handleSaveVictory = () => {
                 if (!activeRefuge || !selectedEmotion) return;
-
-                // 1. Aumentar victorias
+                
                 const newTotal = victories + 1;
                 setVictories(newTotal);
                 localStorage.setItem('bienestar40_victories', newTotal.toString());
 
-                // 2. Registrar refugio usado para no repetirlo
-                const updatedUsed = { ...usedRefuges, [selectedEmotion.id]: [...usedRefuges[selectedEmotion.id], activeRefuge.id] };
-                setUsedRefuges(updatedUsed);
-                localStorage.setItem('bienestar40_used_refuges', JSON.stringify(updatedUsed));
-
-                // 3. Guardar en Historial General (Para futuras métricas del MVP)
-                const historyLog = JSON.parse(localStorage.getItem('bienestar40_history') || '[]');
-                historyLog.push({ date: new Date().toISOString(), emotionId: selectedEmotion.id, refugeId: activeRefuge.id });
-                localStorage.setItem('bienestar40_history', JSON.stringify(historyLog));
-
                 navigateTo('victory');
             };
 
+            const updateName = (newName) => {
+                if(newName.trim()) {
+                    localStorage.setItem('bienestar40_name', newName.trim());
+                    setUserName(newName.trim());
+                    setShowProfile(false);
+                }
+            };
+
+            const resetProgress = () => {
+                localStorage.removeItem('bienestar40_victories');
+                ContentEngine.resetAll(); 
+                setVictories(0);
+                setShowProfile(false);
+            };
+
             return (
-                <Card className={isTransitioning ? 'opacity-0 transition-opacity duration-300' : 'opacity-100 transition-opacity duration-300'}>
+                <Card className={isTransitioning ? 'opacity-0 transition-opacity duration-500' : 'opacity-100 transition-opacity duration-500'}>
+                    {showProfile && <ProfileModal currentName={userName} onClose={() => setShowProfile(false)} onSave={updateName} onReset={resetProgress} />}
+                    
                     {view === 'loading' && (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-400 animate-pulse-slow">
                             <Sparkles size={24} className="mb-2 opacity-50" />
-                            <span className="font-serif italic text-sm tracking-widest">Organizando tu refugio...</span>
+                            <span className="font-serif italic text-sm tracking-widest">Creando espacio...</span>
                         </div>
                     )}
-                    {view === 'onboarding' && <OnboardingView onComplete={handleCompleteOnboarding} />}
-                    {view === 'home' && <HomeView userName={userName} victories={victories} onSelectEmotion={handleSelectEmotion} />}
-                    {view === 'validation' && <ValidationView emotion={selectedEmotion} activeRefuge={activeRefuge} onBack={() => navigateTo('home')} onContinue={() => navigateTo('refuge')} />}
-                    {view === 'refuge' && <RefugeView activeRefuge={activeRefuge} onComplete={handleCompleteRefuge} />}
-                    {view === 'victory' && <VictoryView activeRefuge={activeRefuge} onHome={() => navigateTo('home')} />}
+                    {view === 'onboarding' && <OnboardingView onComplete={(name) => { updateName(name); navigateTo('home'); }} />}
+                    {view === 'home' && <HomeView userName={userName} victories={victories} onSelectEmotion={handleSelectEmotion} onOpenProfile={() => setShowProfile(true)} />}
+                    {view === 'validation' && <ValidationView emotion={selectedEmotion} activeRefuge={activeRefuge} onBack={() => navigateTo('home')} onContinue={() => navigateTo('preparation')} />}
+                    {view === 'preparation' && <PreparationView onReady={() => navigateTo('refuge')} />}
+                    {view === 'refuge' && <RefugeView activeRefuge={activeRefuge} onComplete={() => navigateTo('closure')} />}
+                    {view === 'closure' && <ClosureView onContinue={() => navigateTo('gift')} />}
+                    {view === 'gift' && <GiftView onContinue={handleSaveVictory} totalVictories={victories} />}
+                    {view === 'victory' && <VictoryView onHome={() => navigateTo('home')} />}
                 </Card>
             );
         }
